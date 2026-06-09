@@ -1,3 +1,4 @@
+cat > /home/claude/index_new.html << 'ENDOFFILE'
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -8,11 +9,8 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0f0f1a; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
-
   .screen { display: none; }
   .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-
-  /* LOBBY */
   #lobby-screen { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); }
   .lobby-box { background: #1e1e30; border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
   .game-title { font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
@@ -26,10 +24,10 @@
   .btn-primary { background: linear-gradient(135deg, #7c6cf5, #a99df5); color: #fff; }
   .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
   .btn-secondary { background: #2a2a40; color: #ccc; border: 1px solid #3a3a55; margin-top: 10px; }
+  .btn-ai { background: #2a2a40; color: #ffd93d; border: 1px solid #ffd93d44; margin-top: 10px; }
+  .btn-ai:hover { background: #ffd93d22; }
   .btn-danger { background: #e74c3c; color: #fff; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  /* WAITING */
   #waiting-screen { background: #0f0f1a; }
   .waiting-box { background: #1e1e30; border-radius: 16px; padding: 32px; width: 100%; max-width: 480px; }
   .room-id-display { background: #2a2a40; border-radius: 10px; padding: 16px; text-align: center; margin-bottom: 20px; }
@@ -41,9 +39,8 @@
   .player-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; }
   .player-name { font-size: 0.9rem; }
   .host-badge { background: #f39c12; color: #000; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; }
+  .ai-badge { background: #ffd93d22; color: #ffd93d; border: 1px solid #ffd93d44; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; }
   #player-count-text { color: #888; font-size: 0.85rem; margin-bottom: 16px; }
-
-  /* PICTIONARY */
   #pic-screen { background: #0f0f1a; }
   .pic-box { background: #1e1e30; border-radius: 16px; padding: 24px; width: 100%; max-width: 600px; }
   #pic-status { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
@@ -62,8 +59,6 @@
   #wait-text { color: #888; font-size: 1rem; text-align: center; }
   .wait-icon { font-size: 3rem; margin-bottom: 12px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-
-  /* ROLE SCREEN */
   #role-screen { background: #0f0f1a; }
   .role-box { background: #1e1e30; border-radius: 16px; padding: 32px; width: 100%; max-width: 400px; text-align: center; }
   .role-card { border-radius: 12px; padding: 30px; margin: 20px 0; }
@@ -74,8 +69,6 @@
   .role-desc { color: #aaa; font-size: 0.9rem; }
   #guess-result { color: #ffd93d; font-size: 1rem; margin-bottom: 12px; }
   #role-countdown { color: #666; font-size: 0.9rem; margin-top: 16px; }
-
-  /* HOTEL */
   #hotel-screen { background: #0f0f1a; align-items: flex-start; }
   .hotel-container { width: 100%; max-width: 900px; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .hotel-header { grid-column: 1/-1; display: flex; justify-content: space-between; align-items: center; background: #1e1e30; border-radius: 12px; padding: 16px 20px; }
@@ -109,8 +102,6 @@
   .log-entry.bad { color: #ff6b6b; }
   .log-entry.info { color: #a99df5; }
   .text-muted { color: #555; font-size: 0.85rem; }
-
-  /* END */
   #end-screen { background: #0f0f1a; }
   .end-card { background: #1e1e30; border-radius: 16px; padding: 36px; width: 100%; max-width: 420px; text-align: center; }
   .end-win { border: 2px solid #6bcb77; }
@@ -120,8 +111,6 @@
   #end-desc { color: #aaa; margin-bottom: 20px; }
   .reveal-item { display: flex; align-items: center; gap: 10px; background: #2a2a40; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; text-align: left; }
   #reveal-list { margin-bottom: 20px; width: 100%; }
-
-  /* TOAST */
   #toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
   .toast { background: #2a2a40; border-left: 4px solid #a99df5; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: slidein 0.3s ease; max-width: 300px; }
   .toast.good { border-color: #6bcb77; }
@@ -129,7 +118,6 @@
   .toast.warn { border-color: #ffd93d; }
   .toast.info { border-color: #4ecdc4; }
   @keyframes slidein { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
-
   @media (max-width: 600px) {
     .hotel-container { grid-template-columns: 1fr; }
     .hotel-header { flex-direction: column; gap: 8px; text-align: center; }
@@ -143,7 +131,7 @@
 <div class="screen active" id="lobby-screen">
   <div class="lobby-box">
     <div class="game-title">Hotel <span>Ghost</span> 👻</div>
-    <div class="subtitle">เกมจับผีในโรงแรม • 4+ ผู้เล่น</div>
+    <div class="subtitle">เกมจับผีในโรงแรม • 2+ ผู้เล่น</div>
     <div class="input-group">
       <label>ชื่อผู้เล่น</label>
       <input type="text" id="player-name" placeholder="ใส่ชื่อของคุณ" maxlength="16">
@@ -164,9 +152,10 @@
       <div class="rid" id="display-room-id">-----</div>
       <button class="copy-btn" onclick="copyRoomId()">📋 คัดลอก</button>
     </div>
-    <div id="player-count-text">ผู้เล่น 0/4+ คน</div>
+    <div id="player-count-text">ผู้เล่น 0/2+ คน</div>
     <div id="waiting-player-list"></div>
-    <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled>รอ Host เริ่มเกม...</button>
+    <button class="btn btn-ai" id="add-ai-btn" onclick="addAI()" style="display:none">🤖 + เพิ่ม AI</button>
+    <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled style="margin-top:10px">รอ Host เริ่มเกม...</button>
   </div>
 </div>
 
@@ -175,8 +164,6 @@
   <div class="pic-box">
     <div id="pic-status">กำลังโหลด...</div>
     <div id="pic-timer">--</div>
-
-    <!-- วาด -->
     <div id="draw-panel">
       <div id="draw-prompt"></div>
       <canvas id="draw-canvas" width="520" height="320"></canvas>
@@ -196,15 +183,11 @@
       </div>
       <button class="btn btn-primary" style="max-width:300px;margin-top:8px" onclick="submitDrawing()">✅ ส่งรูป</button>
     </div>
-
-    <!-- เดา -->
     <div id="guess-panel">
       <img id="pic-image-preview" src="" alt="รูปที่วาด">
       <input type="text" id="guess-input" placeholder="เดาว่ารูปนี้คืออะไร...">
       <button class="btn btn-primary" style="max-width:300px" onclick="submitGuess()">🎯 ส่งคำตอบ</button>
     </div>
-
-    <!-- รอ -->
     <div id="wait-panel">
       <div class="wait-icon">⏳</div>
       <div id="wait-text">กำลังรอ...</div>
@@ -232,23 +215,19 @@
       </div>
       <div id="hotel-time-display">05:00</div>
     </div>
-
     <div class="panel">
       <div class="panel-title">🧍 แขกที่รอเช็คอิน</div>
       <div id="guest-list"><p class="text-muted">ยังไม่มีแขก</p></div>
     </div>
-
     <div class="panel">
       <div class="panel-title">👥 พนักงาน / ผู้เล่น</div>
       <div id="player-cards"></div>
     </div>
-
     <div class="vote-section">
       <button class="btn btn-danger" style="width:auto;padding:10px 20px;white-space:nowrap" onclick="voteEnd()">🗳️ โหวตจบเกม</button>
       <div class="vote-bar"><div id="vote-fill"></div></div>
       <div id="vote-text">0/0</div>
     </div>
-
     <div class="log-panel">
       <div class="panel-title">📋 Event Log</div>
       <div id="event-log"></div>
@@ -258,7 +237,7 @@
 
 <!-- END -->
 <div class="screen" id="end-screen">
-  <div class="end-card">
+  <div class="end-card" id="end-card">
     <div id="end-icon">🎉</div>
     <div id="end-title">จบเกม</div>
     <div id="end-desc"></div>
@@ -271,27 +250,13 @@
 
 <script>
 const socket = io();
-
-let myName = '';
-let myRoomId = '';
-let isHost = false;
-let myRole = null;
-let currentScreen = 'lobby-screen';
-
-let canvas, ctx;
-let drawing = false;
-let currentColor = '#000000';
-let currentSize = 4;
-let isEraser = false;
-let lastX = 0, lastY = 0;
-
-let guestMap = {};
-let playerMap = {};
+let myName = '', myRoomId = '', isHost = false, myRole = null;
+let canvas, ctx, drawing = false, currentColor = '#000000', currentSize = 4, isEraser = false, lastX = 0, lastY = 0;
+let guestMap = {}, playerMap = {};
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  currentScreen = id;
 }
 
 function joinGame() {
@@ -307,19 +272,15 @@ function copyRoomId() {
   navigator.clipboard.writeText(myRoomId).then(() => toast('คัดลอกรหัสห้องแล้ว ✅', 'good'));
 }
 
-function startGame() {
-  socket.emit('start_game');
-}
+function startGame() { socket.emit('start_game'); }
+function addAI() { socket.emit('add_ai'); }
 
 function initCanvas() {
   canvas = document.getElementById('draw-canvas');
   if (!canvas) return;
   ctx = canvas.getContext('2d');
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   canvas.addEventListener('mousedown', startDraw);
   canvas.addEventListener('mousemove', draw);
   canvas.addEventListener('mouseup', stopDraw);
@@ -331,110 +292,50 @@ function initCanvas() {
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  return {
-    x: (e.clientX - rect.left) * (canvas.width / rect.width),
-    y: (e.clientY - rect.top) * (canvas.height / rect.height),
-  };
+  return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
 }
 
 function startDraw(e) {
   drawing = true;
-  const { x, y } = getPos(e);
-  lastX = x; lastY = y;
-  ctx.beginPath();
-  ctx.arc(x, y, currentSize / 2, 0, Math.PI * 2);
-  ctx.fillStyle = isEraser ? '#ffffff' : currentColor;
-  ctx.fill();
+  const { x, y } = getPos(e); lastX = x; lastY = y;
+  ctx.beginPath(); ctx.arc(x, y, currentSize / 2, 0, Math.PI * 2);
+  ctx.fillStyle = isEraser ? '#ffffff' : currentColor; ctx.fill();
 }
 
 function draw(e) {
   if (!drawing) return;
   const { x, y } = getPos(e);
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(x, y);
-  ctx.strokeStyle = isEraser ? '#ffffff' : currentColor;
-  ctx.lineWidth = currentSize;
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y);
+  ctx.strokeStyle = isEraser ? '#ffffff' : currentColor; ctx.lineWidth = currentSize; ctx.stroke();
   lastX = x; lastY = y;
 }
 
 function stopDraw() { drawing = false; }
-
-function setColor(el) {
-  isEraser = false;
-  currentColor = el.dataset.color;
-  document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-}
-
+function setColor(el) { isEraser = false; currentColor = el.dataset.color; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 function toggleEraser() { isEraser = !isEraser; }
-
-function setSize(el) {
-  currentSize = parseInt(el.dataset.size);
-  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function clearCanvas() {
-  if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function submitDrawing() {
-  const dataUrl = canvas.toDataURL('image/png');
-  socket.emit('pictionary_submit', { type: 'draw', data: dataUrl });
-  showPicWaiting('ส่งรูปแล้ว รอผู้เล่นถัดไป...');
-}
-
-function submitGuess() {
-  const g = document.getElementById('guess-input').value.trim();
-  if (!g) return;
-  socket.emit('pictionary_guess', { guess: g });
-  showPicWaiting('ส่งคำตอบแล้ว รอผล...');
-}
-
-function showPicWaiting(text) {
-  document.getElementById('draw-panel').style.display = 'none';
-  document.getElementById('guess-panel').style.display = 'none';
-  document.getElementById('wait-panel').style.display = 'flex';
-  document.getElementById('wait-text').textContent = text;
-}
+function setSize(el) { currentSize = parseInt(el.dataset.size); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function clearCanvas() { if (!ctx) return; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+function submitDrawing() { socket.emit('pictionary_submit', { type: 'draw', data: canvas.toDataURL('image/png') }); showPicWaiting('ส่งรูปแล้ว รอผู้เล่นถัดไป...'); }
+function submitGuess() { const g = document.getElementById('guess-input').value.trim(); if (!g) return; socket.emit('pictionary_guess', { guess: g }); showPicWaiting('ส่งคำตอบแล้ว รอผล...'); }
+function showPicWaiting(text) { document.getElementById('draw-panel').style.display = 'none'; document.getElementById('guess-panel').style.display = 'none'; document.getElementById('wait-panel').style.display = 'flex'; document.getElementById('wait-text').textContent = text; }
 
 function updateGuestList() {
   const el = document.getElementById('guest-list');
   const guests = Object.values(guestMap).filter(g => !g.checkedIn);
   if (guests.length === 0) { el.innerHTML = '<p class="text-muted">ยังไม่มีแขก</p>'; return; }
-  el.innerHTML = guests.map(g => `
-    <div class="guest-card" id="gc-${g.id}">
-      <div class="g-name"><span class="g-icon">🧍</span>${g.name}</div>
-      <button class="scan-btn" onclick="scanGuest('${g.id}')">🔍 สแกน</button>
-    </div>
-  `).join('');
+  el.innerHTML = guests.map(g => `<div class="guest-card"><div class="g-name"><span class="g-icon">🧍</span>${g.name}</div><button class="scan-btn" onclick="scanGuest('${g.id}')">🔍 สแกน</button></div>`).join('');
 }
 
 function updatePlayerCards() {
   const el = document.getElementById('player-cards');
   const players = Object.entries(playerMap);
-  if (players.length === 0) { el.innerHTML = ''; return; }
+  if (!players.length) { el.innerHTML = ''; return; }
   el.innerHTML = players.map(([id, p]) => {
     let roleClass = 'p-role-unknown', roleText = '❓ ไม่รู้';
-    if (p.roleRevealed) {
-      if (p.role === 'ghost') { roleClass = 'p-role-ghost'; roleText = '👻 ผี'; }
-      else { roleClass = 'p-role-human'; roleText = '👤 คน'; }
-    }
+    if (p.roleRevealed) { if (p.role === 'ghost') { roleClass = 'p-role-ghost'; roleText = '👻 ผี'; } else { roleClass = 'p-role-human'; roleText = '👤 คน'; } }
     const isSelf = id === socket.id;
-    return `
-      <div class="pcard">
-        <div class="p-name">
-          ${isSelf ? '⭐' : '👤'} ${p.name} ${isSelf ? '(คุณ)' : ''}
-          <span class="p-role-badge ${roleClass}">${roleText}</span>
-        </div>
-        ${!isSelf ? `<button class="scan-btn" onclick="scanPlayer('${id}')">🔍 สแกนพนักงาน</button>` : ''}
-      </div>
-    `;
+    const aiTag = p.isAI ? ' 🤖' : '';
+    return `<div class="pcard"><div class="p-name">${isSelf ? '⭐' : '👤'} ${p.name}${aiTag} ${isSelf ? '(คุณ)' : ''}<span class="p-role-badge ${roleClass}">${roleText}</span></div>${!isSelf && !p.isAI ? `<button class="scan-btn" onclick="scanPlayer('${id}')">🔍 สแกนพนักงาน</button>` : ''}</div>`;
   }).join('');
 }
 
@@ -447,21 +348,15 @@ function addLog(text, type = '') {
   const div = document.createElement('div');
   div.className = 'log-entry ' + type;
   const time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  div.textContent = `[${time}] ${text}`;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
+  div.textContent = `[${time}] ${text}`; el.appendChild(div); el.scrollTop = el.scrollHeight;
 }
 
-function formatTime(sec) {
-  return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
-}
+function formatTime(sec) { return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; }
 
 function toast(msg, type = '') {
-  const container = document.getElementById('toast-container');
   const el = document.createElement('div');
-  el.className = 'toast ' + type;
-  el.textContent = msg;
-  container.appendChild(el);
+  el.className = 'toast ' + type; el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
 
@@ -476,10 +371,12 @@ socket.on('lobby_update', ({ players, count, minPlayers }) => {
       <div class="player-avatar" style="background:${colors[i%colors.length]}22;border:2px solid ${colors[i%colors.length]}">${p.name[0].toUpperCase()}</div>
       <div class="player-name">${p.name}</div>
       ${p.isHost ? '<div class="host-badge">👑 Host</div>' : ''}
-    </div>
-  `).join('');
+      ${p.isAI ? '<div class="ai-badge">🤖 AI</div>' : ''}
+    </div>`).join('');
   isHost = players.find(p => p.name === myName)?.isHost || false;
   const startBtn = document.getElementById('start-btn');
+  const addAIBtn = document.getElementById('add-ai-btn');
+  addAIBtn.style.display = isHost ? 'block' : 'none';
   startBtn.disabled = !(isHost && count >= minPlayers);
   startBtn.textContent = isHost
     ? (count >= minPlayers ? `🎮 เริ่มเกม (${count} คน)` : `เริ่มเกม (ต้องการ ${minPlayers} คน)`)
@@ -487,13 +384,12 @@ socket.on('lobby_update', ({ players, count, minPlayers }) => {
 });
 
 socket.on('pictionary_start', ({ totalPlayers, currentPlayer }) => {
-  showScreen('pic-screen');
-  initCanvas();
+  showScreen('pic-screen'); initCanvas();
   showPicWaiting(`${currentPlayer} กำลังวาดรูป...`);
   document.getElementById('pic-status').textContent = `ภารกิจ: วาดรูปส่งต่อ (${totalPlayers} คน)`;
 });
 
-socket.on('pictionary_turn', ({ type, prompt, image, timeLeft, turnIndex, total }) => {
+socket.on('pictionary_turn', ({ type, prompt, image, turnIndex, total }) => {
   showScreen('pic-screen');
   document.getElementById('pic-status').textContent = `รอบที่ ${turnIndex+1}/${total}`;
   if (type === 'draw') {
@@ -501,8 +397,7 @@ socket.on('pictionary_turn', ({ type, prompt, image, timeLeft, turnIndex, total 
     document.getElementById('guess-panel').style.display = 'none';
     document.getElementById('draw-panel').style.display = 'flex';
     document.getElementById('draw-prompt').textContent = `วาด: ${prompt}`;
-    clearCanvas();
-    if (!canvas) initCanvas();
+    clearCanvas(); if (!canvas) initCanvas();
   } else {
     document.getElementById('wait-panel').style.display = 'none';
     document.getElementById('draw-panel').style.display = 'none';
@@ -514,8 +409,7 @@ socket.on('pictionary_turn', ({ type, prompt, image, timeLeft, turnIndex, total 
 
 socket.on('pictionary_timer', ({ timeLeft }) => {
   const el = document.getElementById('pic-timer');
-  el.textContent = timeLeft;
-  el.style.color = timeLeft <= 2 ? '#ff4444' : '#ff6b6b';
+  el.textContent = timeLeft; el.style.color = timeLeft <= 2 ? '#ff4444' : '#ff6b6b';
 });
 
 socket.on('pictionary_final_guess', ({ image }) => {
@@ -528,97 +422,49 @@ socket.on('pictionary_final_guess', ({ image }) => {
   toast('คุณต้องเดาคำสุดท้าย! 🎯', 'warn');
 });
 
-socket.on('pictionary_waiting_guess', ({ guesser }) => {
-  showPicWaiting(`${guesser} กำลังเดาคำสุดท้าย...`);
-});
+socket.on('pictionary_waiting_guess', ({ guesser }) => { showPicWaiting(`${guesser} กำลังเดาคำสุดท้าย...`); });
 
 socket.on('role_revealed', ({ role, correct, originalWord, guess }) => {
-  myRole = role;
-  showScreen('role-screen');
-  document.getElementById('guess-result').textContent = correct
-    ? `✅ เดาถูก! คำตอบคือ "${originalWord}"`
-    : `❌ เดาผิด — "${guess}" แต่คำตอบจริงคือ "${originalWord}"`;
+  myRole = role; showScreen('role-screen');
+  document.getElementById('guess-result').textContent = correct ? `✅ เดาถูก! คำตอบคือ "${originalWord}"` : `❌ เดาผิด — "${guess}" แต่คำตอบจริงคือ "${originalWord}"`;
   const isGhost = role === 'ghost';
-  document.getElementById('role-card-container').innerHTML = `
-    <div class="role-card ${isGhost ? 'role-ghost' : 'role-human'}">
-      <div class="role-icon">${isGhost ? '👻' : '👤'}</div>
-      <div class="role-title" style="color:${isGhost ? '#a99df5' : '#6bcb77'}">คุณคือ${isGhost ? 'ผี' : 'มนุษย์'}</div>
-      <div class="role-desc">${isGhost ? 'ซ่อนตัวในโรงแรม อย่าให้ใครจับได้ว่าเป็นผี' : 'ช่วยคัดกรองผีออกจากโรงแรม'}</div>
-    </div>
-  `;
+  document.getElementById('role-card-container').innerHTML = `<div class="role-card ${isGhost ? 'role-ghost' : 'role-human'}"><div class="role-icon">${isGhost ? '👻' : '👤'}</div><div class="role-title" style="color:${isGhost ? '#a99df5' : '#6bcb77'}">คุณคือ${isGhost ? 'ผี' : 'มนุษย์'}</div><div class="role-desc">${isGhost ? 'ซ่อนตัวในโรงแรม อย่าให้ใครจับได้ว่าเป็นผี' : 'ช่วยคัดกรองผีออกจากโรงแรม'}</div></div>`;
   let count = 3;
-  const countdown = document.getElementById('role-countdown');
-  const iv = setInterval(() => {
-    countdown.textContent = `เข้าสู่โรงแรมใน ${count} วิ...`;
-    count--;
-    if (count < 0) clearInterval(iv);
-  }, 1000);
+  const cd = document.getElementById('role-countdown');
+  const iv = setInterval(() => { cd.textContent = `เข้าสู่โรงแรมใน ${count} วิ...`; count--; if (count < 0) clearInterval(iv); }, 1000);
 });
 
 socket.on('hotel_start', ({ hotelTime, players }) => {
-  showScreen('hotel-screen');
-  playerMap = {};
-  players.forEach(p => { playerMap[p.id] = p; });
-  updatePlayerCards();
+  showScreen('hotel-screen'); playerMap = {};
+  players.forEach(p => { playerMap[p.id] = p; }); updatePlayerCards();
   const roleEl = document.getElementById('my-role-display');
-  roleEl.innerHTML = myRole === 'ghost'
-    ? '<span style="color:#a99df5">👻 คุณคือผี — ซ่อนตัวให้ดี!</span>'
-    : '<span style="color:#6bcb77">👤 คุณคือมนุษย์ — ช่วยจับผีด้วย!</span>';
+  roleEl.innerHTML = myRole === 'ghost' ? '<span style="color:#a99df5">👻 คุณคือผี — ซ่อนตัวให้ดี!</span>' : '<span style="color:#6bcb77">👤 คุณคือมนุษย์ — ช่วยจับผีด้วย!</span>';
   addLog('เกมเริ่มต้นแล้ว! ดูแลโรงแรมให้ดี 🏨', 'info');
 });
 
 socket.on('hotel_timer', ({ hotelTime }) => {
   const el = document.getElementById('hotel-time-display');
   el.textContent = formatTime(hotelTime);
-  if (hotelTime <= 60) el.classList.add('warning');
-  else el.classList.remove('warning');
+  if (hotelTime <= 60) el.classList.add('warning'); else el.classList.remove('warning');
 });
 
 socket.on('guest_arrived', ({ guestId, guestName }) => {
   guestMap[guestId] = { id: guestId, name: guestName, checkedIn: false };
-  updateGuestList();
-  addLog(`${guestName} มาถึงโรงแรม รอเช็คอิน`, 'info');
-  toast(`🧍 ${guestName} มาถึงแล้ว!`);
-  setTimeout(() => {
-    if (guestMap[guestId] && !guestMap[guestId].checkedIn) {
-      guestMap[guestId].checkedIn = true;
-      socket.emit('checkin_guest', { guestId });
-      updateGuestList();
-      addLog(`${guestName} เช็คอินเข้าพักแล้ว`, '');
-    }
-  }, 10000);
+  updateGuestList(); addLog(`${guestName} มาถึงโรงแรม รอเช็คอิน`, 'info'); toast(`🧍 ${guestName} มาถึงแล้ว!`);
+  setTimeout(() => { if (guestMap[guestId] && !guestMap[guestId].checkedIn) { guestMap[guestId].checkedIn = true; socket.emit('checkin_guest', { guestId }); updateGuestList(); addLog(`${guestName} เช็คอินเข้าพักแล้ว`, ''); } }, 10000);
 });
 
 socket.on('guest_scanned', ({ guestId, guestName, isGhost, penalty, scannerName, hotelTime }) => {
-  if (isGhost) {
-    delete guestMap[guestId];
-    updateGuestList();
-    addLog(`${scannerName} สแกน ${guestName} → เป็นผี! ไล่ออกแล้ว 👻`, 'good');
-    toast(`✅ ${guestName} เป็นผี — ไล่ออกแล้ว!`, 'good');
-  } else {
-    addLog(`${scannerName} สแกน ${guestName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad');
-    toast(`⚠️ ${guestName} เป็นคน เสียเวลา ${penalty} วิ!`, 'bad');
-    if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime);
-  }
+  if (isGhost) { delete guestMap[guestId]; updateGuestList(); addLog(`${scannerName} สแกน ${guestName} → เป็นผี! ไล่ออกแล้ว 👻`, 'good'); toast(`✅ ${guestName} เป็นผี — ไล่ออกแล้ว!`, 'good'); }
+  else { addLog(`${scannerName} สแกน ${guestName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad'); toast(`⚠️ ${guestName} เป็นคน เสียเวลา ${penalty} วิ!`, 'bad'); if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime); }
 });
 
 socket.on('player_scanned', ({ targetName, isGhost, penalty, scannerName, hotelTime }) => {
-  if (isGhost) {
-    addLog(`${scannerName} สแกน ${targetName} → เป็นผี! ไล่ออก 👻`, 'good');
-    toast(`✅ ${targetName} เป็นผีพนักงาน — ไล่ออกแล้ว!`, 'good');
-    const id = Object.keys(playerMap).find(k => playerMap[k].name === targetName);
-    if (id) { delete playerMap[id]; updatePlayerCards(); }
-  } else {
-    addLog(`${scannerName} สแกน ${targetName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad');
-    toast(`⚠️ ${targetName} เป็นมนุษย์ เสียเวลา ${penalty} วิ!`, 'bad');
-    if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime);
-  }
+  if (isGhost) { addLog(`${scannerName} สแกน ${targetName} → เป็นผี! ไล่ออก 👻`, 'good'); toast(`✅ ${targetName} เป็นผีพนักงาน — ไล่ออกแล้ว!`, 'good'); const id = Object.keys(playerMap).find(k => playerMap[k].name === targetName); if (id) { delete playerMap[id]; updatePlayerCards(); } }
+  else { addLog(`${scannerName} สแกน ${targetName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad'); toast(`⚠️ ${targetName} เป็นมนุษย์ เสียเวลา ${penalty} วิ!`, 'bad'); if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime); }
 });
 
-socket.on('you_were_caught', () => {
-  toast('คุณถูกจับแล้ว! 👻 เกมจบสำหรับคุณ', 'bad');
-  addLog('คุณถูกไล่ออกจากโรงแรม', 'bad');
-});
+socket.on('you_were_caught', () => { toast('คุณถูกจับแล้ว! 👻', 'bad'); addLog('คุณถูกไล่ออกจากโรงแรม', 'bad'); });
 
 socket.on('vote_update', ({ votes, needed }) => {
   document.getElementById('vote-text').textContent = `${votes} / ${needed}`;
@@ -626,10 +472,7 @@ socket.on('vote_update', ({ votes, needed }) => {
   addLog(`โหวตจบเกม: ${votes}/${needed}`, 'info');
 });
 
-socket.on('player_left', ({ name }) => {
-  toast(`${name} ออกจากเกม`, 'warn');
-  addLog(`${name} ออกจากเกม`, 'warn');
-});
+socket.on('player_left', ({ name }) => { toast(`${name} ออกจากเกม`, 'warn'); addLog(`${name} ออกจากเกม`, 'warn'); });
 
 socket.on('game_over', ({ win, reason, totalGhosts, players }) => {
   showScreen('end-screen');
@@ -637,22 +480,14 @@ socket.on('game_over', ({ win, reason, totalGhosts, players }) => {
   card.className = 'end-card ' + (win ? 'end-win' : 'end-lose');
   document.getElementById('end-icon').textContent = win ? '🎉' : '💀';
   document.getElementById('end-title').textContent = win ? 'ชนะแล้ว!' : 'แพ้แล้ว!';
-  let desc = reason === 'timeout' ? '⏱️ เวลาหมด — ผียังอยู่ในโรงแรม!'
-    : win ? '✅ ไล่ผีออกหมดแล้ว โรงแรมปลอดภัย!'
-    : `❌ ยังมีผีเหลืออยู่ ${totalGhosts} ตัว!`;
-  document.getElementById('end-desc').textContent = desc;
-  document.getElementById('reveal-list').innerHTML =
-    '<div style="font-size:0.8rem;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:2px">เปิดเผยทุกบท</div>' +
-    players.map(p => `
-      <div class="reveal-item">
-        <span style="font-size:1.4rem">${p.role==='ghost'?'👻':'👤'}</span>
-        <span>${p.name}</span>
-        <span style="margin-left:auto;font-size:0.85rem;color:${p.role==='ghost'?'#a99df5':'#6bcb77'}">${p.role==='ghost'?'ผี':'มนุษย์'}</span>
-      </div>
-    `).join('');
+  document.getElementById('end-desc').textContent = reason === 'timeout' ? '⏱️ เวลาหมด — ผียังอยู่ในโรงแรม!' : win ? '✅ ไล่ผีออกหมดแล้ว โรงแรมปลอดภัย!' : `❌ ยังมีผีเหลืออยู่ ${totalGhosts} ตัว!`;
+  document.getElementById('reveal-list').innerHTML = '<div style="font-size:0.8rem;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:2px">เปิดเผยทุกบท</div>' +
+    players.map(p => `<div class="reveal-item"><span style="font-size:1.4rem">${p.role==='ghost'?'👻':'👤'}</span><span>${p.name}${p.isAI?' 🤖':''}</span><span style="margin-left:auto;font-size:0.85rem;color:${p.role==='ghost'?'#a99df5':'#6bcb77'}">${p.role==='ghost'?'ผี':'มนุษย์'}</span></div>`).join('');
 });
 
 socket.on('error_msg', (msg) => { toast('❌ ' + msg, 'bad'); });
 </script>
 </body>
 </html>
+ENDOFFILE
+echo "done"
