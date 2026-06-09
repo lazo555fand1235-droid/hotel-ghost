@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const rooms = {};
 
 // ---- CONFIG ----
-const ROUND_TIME = 30;          // วินาทีต่อรอบ
+const ROUND_TIME = 60;          // วินาทีต่อรอบ
 const MAX_STARS = 5;
 const HOTEL_ROOMS = ['101','102','103','201','202','203','301','302']; // 8 ห้อง
 const MIN_PLAYERS = 1;
@@ -29,6 +29,8 @@ const HUMAN_CLUES = [
   'มีกลิ่นเหงื่อเล็กน้อย','เงาตกตามทิศที่ถูกต้อง',
   'น้ำหนักกดพื้นเป็นเสียงก้อง','ผมมีไขมันตามธรรมชาติ',
   'สีหน้าเปลี่ยนเมื่อถูกถาม','มีรอยช้ำเก่าที่แขน',
+  'ตอบสนองเมื่อเรียกชื่อ','กระพริบตาเมื่อแสงจ้า',
+  'มีรอยยิ้มจริงๆ เมื่อพูดคุย','ผิวหนังมีขุยเล็กน้อยตามธรรมชาติ',
 ];
 const GHOST_CLUES = [
   'เงาหายไปช่วงสั้นๆ','อุณหภูมิรอบตัวเย็นกว่าปกติ 3°C',
@@ -36,11 +38,17 @@ const GHOST_CLUES = [
   'เดินแต่ไม่มีเสียงเท้า','ดวงตาสะท้อนแสงในความมืด',
   'รอยเท้าหยุดกลางทาง','ผิวเย็นเหมือนหินอ่อน',
   'ปฏิทินในมือแสดงวันที่ผิด','หายใจแต่ไม่มีไอน้ำในอากาศเย็น',
+  'เดินผ่านอุปกรณ์ตรวจจับความร้อนแต่ไม่แสดงผล',
+  'เงาในกระจกเคลื่อนไหวช้ากว่าตัวจริง',
 ];
 const AMBIGUOUS_CLUES = [
   'นิ่งผิดปกติเมื่อมีคนเข้ามาใกล้','ตอบคำถามช้ากว่าปกติเล็กน้อย',
   'สีหน้าซีดกว่าคนทั่วไป','ไม่ค่อยสบตาเมื่อพูดคุย',
   'ผ้าเสื้อไม่มีรอยยับแม้เดินทางมาไกล','รูปถ่ายในบัตรดูเก่ากว่าที่ควร',
+  'ตัวเย็นกว่าปกติเล็กน้อย อาจเพราะอากาศ','ไม่ยิ้มเลยตลอดการสนทนา',
+  'พูดน้อยผิดปกติ','มองรอบๆ ห้องบ่อยครั้ง',
+  'ยืนนิ่งเป็นเวลานานโดยไม่มีเหตุผล','ดูเหนื่อยล้าอย่างผิดปกติ',
+  'ไม่แสดงอาการหนาวแม้อุณหภูมิจะต่ำ','ตอบคำถามแบบท่องจำ ไม่เป็นธรรมชาติ',
 ];
 
 const CARD_TYPES = ['ปกติ','เจาะรู','ไม่มีบัตร'];
@@ -415,28 +423,45 @@ function addLog(room, text, type='') {
 
 // ---- TASKS ----
 function joinTask(room, playerId, taskId) {
-  const task = room.tasks.find(t=>t.id===taskId);
+  const task = room.tasks.find(t => t.id === taskId);
   if (!task || task.completed) return;
+  // ห้าม join ซ้ำ
+  if (task.progress[playerId]) {
+    const name = room.players[playerId]?.name || '?';
+    broadcastToRoom(room, 'task_already_joined', { taskId, playerName: name });
+    return;
+  }
   task.progress[playerId] = true;
   const needed = task.needPlayers || 1;
   const joined = Object.keys(task.progress).length;
+
+  broadcastToRoom(room, 'task_joined', {
+    taskId,
+    joined,
+    needed,
+    playerName: room.players[playerId]?.name || '?',
+  });
+
   if (joined >= needed) {
     task.completed = true;
-    if (task.timeBonus>0) room.roundTime = Math.min(ROUND_TIME*2, room.roundTime+task.timeBonus);
-    broadcastToRoom(room, 'task_complete', { taskId, taskName:task.name, timeBonus:task.timeBonus });
-    addLog(room, `✅ ภารกิจ "${task.name}" สำเร็จ!${task.timeBonus>0?' +'+task.timeBonus+' วิ':''}`, 'good');
+    if (task.timeBonus > 0) {
+      room.roundTime = Math.min(ROUND_TIME * 2, room.roundTime + task.timeBonus);
+    }
+    broadcastToRoom(room, 'task_complete', {
+      taskId,
+      taskName: task.name,
+      timeBonus: task.timeBonus,
+    });
+    addLog(room, `✅ ภารกิจ "${task.name}" สำเร็จ!${task.timeBonus > 0 ? ' +' + task.timeBonus + ' วิ' : ''}`, 'good');
 
-    // ถ้าเป็น inspect/review/purify — ได้เบาะแส
+    // inspect/review/purify → ได้เบาะแส
     if (['inspect','review','purify'].includes(task.id.split('_')[0])) {
       const clue = generateRoomClue(room);
-      room.clues.push({ text:clue, round:room.round, source:'task' });
-      broadcastToRoom(room, 'clue_found', { text:clue, source:'task' });
+      room.clues.push({ text: clue, round: room.round, source: 'task' });
+      broadcastToRoom(room, 'clue_found', { text: clue, source: 'task' });
     }
-    broadcastState(room);
-  } else {
-    broadcastToRoom(room, 'task_joined', { taskId, joined, needed, playerName: room.players[playerId]?.name });
-    broadcastState(room);
   }
+  broadcastState(room);
 }
 
 // ---- SCAN GUEST (by player, แทนโหวต) ----
@@ -638,6 +663,42 @@ io.on('connection', socket=>{
     const room=rooms[socket.roomId];
     if (!room||room.phase!=='playing') return;
     joinTask(room,socket.id,taskId);
+  });
+
+  // ไล่แขกออกตรงๆ (ไม่ผ่านโหวต) — ถ้าเป็นผีได้คะแนน ถ้าเป็นคนเสีย 1 ดาว
+  socket.on('kick_guest',({guestId})=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    const kicker=room.players[socket.id]?.name||'พนักงาน';
+    // หาใน queue หรือในห้อง
+    let guest=room.guestQueue.find(g=>g.id===guestId);
+    let fromRoom=null;
+    if (!guest) {
+      const hr=Object.values(room.hotelRooms).find(r=>r.guest?.id===guestId);
+      if (hr) { guest=hr.guest; fromRoom=hr; }
+    }
+    if (!guest) return;
+    // ยกเลิก vote ถ้ากำลัง active
+    if (guest.voteActive) {
+      clearTimeout(guest.voteTimeout);
+      guest.voteActive=false;
+    }
+    if (guest.isGhost) {
+      // ถูกต้อง — ไล่ผีออก
+      if (fromRoom) { fromRoom.guest=null; fromRoom.hasGhost=false; }
+      room.guestQueue=room.guestQueue.filter(g=>g.id!==guestId);
+      broadcastToRoom(room,'kick_result',{guestId,guestName:guest.name,correct:true,kickerName:kicker});
+      addLog(room,`✅ ${kicker} ไล่ ${guest.name} ออก — เป็นผีจริง!`,'good');
+    } else {
+      // ผิด — ไล่คนออก เสีย 1 ดาว
+      if (fromRoom) { fromRoom.guest=null; fromRoom.hasGhost=false; }
+      room.guestQueue=room.guestQueue.filter(g=>g.id!==guestId);
+      room.stars=Math.max(0,room.stars-1);
+      broadcastToRoom(room,'kick_result',{guestId,guestName:guest.name,correct:false,kickerName:kicker,stars:room.stars});
+      addLog(room,`❌ ${kicker} ไล่ ${guest.name} ออก — เป็นคน! เสีย 1 ดาว`,'bad');
+      if (room.stars<=0) { endGame(room,'no_stars'); return; }
+    }
+    broadcastState(room);
   });
 
   socket.on('vote_end_game',()=>{
