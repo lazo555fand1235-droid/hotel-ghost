@@ -1,12 +1,10 @@
 {
-  "name": "hotel-ghost",
-  "version": "1.0.0",
+  "name": "hotel-ghost-v2",
+  "version": "2.0.0",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
   }
 }
