@@ -2,359 +2,474 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Hotel Ghost 👻</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#0a0a14;--bg2:#11111f;--bg3:#18182a;--bg4:#20203a;
   --accent:#8b7cf6;--accent2:#b8aeff;--green:#4ecb71;--red:#e05252;
   --yellow:#f0c040;--blue:#4eb8cb;--text:#ddd;--muted:#666;
   --border:#2a2a44;--radius:10px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Tahoma,sans-serif;min-height:100vh;}
-.screen{display:none;}
-.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:16px;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Tahoma,sans-serif;}
 
-/* ---- LOBBY ---- */
-#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#1a1040 0%,var(--bg) 70%);}
-.lobby-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:400px;}
-.game-logo{text-align:center;margin-bottom:24px;}
-.game-logo h1{font-size:2.4rem;font-weight:900;letter-spacing:-1px;}
+/* ===== SCREENS ===== */
+.screen{display:none;position:fixed;inset:0;overflow-y:auto;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* ===== LOBBY ===== */
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#1a1040 0%,var(--bg) 70%);
+  align-items:center;justify-content:center;padding:20px;}
+.lobby-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:16px;
+  padding:28px 24px;width:100%;max-width:400px;}
+.game-logo{text-align:center;margin-bottom:20px;}
+.game-logo h1{font-size:2rem;font-weight:900;letter-spacing:-1px;}
 .game-logo h1 span{color:var(--accent2);}
-.game-logo p{color:var(--muted);font-size:.85rem;margin-top:4px;}
-.inp-group{margin-bottom:14px;}
-.inp-group label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}
-.inp-group input{width:100%;padding:11px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.95rem;outline:none;transition:border-color .2s;}
+.game-logo p{color:var(--muted);font-size:.82rem;margin-top:4px;}
+.inp-group{margin-bottom:12px;}
+.inp-group label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:5px;
+  text-transform:uppercase;letter-spacing:1px;}
+.inp-group input{width:100%;padding:12px 14px;background:var(--bg4);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:1rem;outline:none;transition:border-color .2s;}
 .inp-group input:focus{border-color:var(--accent);}
-.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:6px;}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;
+  font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px;}
 .btn-main{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
-.btn-main:hover{opacity:.88;transform:translateY(-1px);}
+.btn-main:active{opacity:.8;transform:scale(.98);}
 .btn-ghost{background:var(--bg4);color:var(--muted);border:1px solid var(--border);}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
-.btn-danger{background:var(--red);color:#fff;}
 .btn:disabled{opacity:.35;pointer-events:none;}
 
-/* ---- WAITING ---- */
-#waiting-screen{background:var(--bg);}
-.wait-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:460px;}
-.room-badge{background:var(--bg4);border-radius:10px;padding:14px;text-align:center;margin-bottom:18px;}
-.room-badge .lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;}
-.room-badge .rid{font-size:2.2rem;font-weight:900;color:var(--accent2);letter-spacing:5px;}
-.copy-btn{background:none;border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:3px 10px;cursor:pointer;font-size:.75rem;margin-top:6px;}
-.player-grid{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
-.pchip{display:flex;align-items:center;gap:7px;background:var(--bg4);border-radius:8px;padding:7px 12px;font-size:.88rem;}
-.pchip .ava{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;}
-.host-tag{background:var(--yellow);color:#000;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:800;}
-.ai-tag{background:#333;color:var(--muted);border-radius:4px;padding:1px 6px;font-size:.68rem;}
+/* ===== WAITING ===== */
+#waiting-screen{align-items:center;justify-content:center;padding:20px;}
+.wait-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;
+  padding:24px;width:100%;max-width:440px;}
+.room-badge{background:var(--bg4);border-radius:10px;padding:14px;text-align:center;margin-bottom:16px;}
+.room-badge .lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;}
+.room-badge .rid{font-size:2rem;font-weight:900;color:var(--accent2);letter-spacing:5px;}
+.copy-btn{background:none;border:1px solid var(--accent);color:var(--accent);
+  border-radius:5px;padding:5px 12px;cursor:pointer;font-size:.75rem;margin-top:6px;}
+.player-grid{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+.pchip{display:flex;align-items:center;gap:7px;background:var(--bg4);
+  border-radius:8px;padding:8px 12px;font-size:.88rem;}
+.pchip .ava{width:28px;height:28px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-weight:700;font-size:.8rem;}
+.host-tag{background:var(--yellow);color:#000;border-radius:4px;
+  padding:1px 6px;font-size:.65rem;font-weight:800;}
+.ai-tag{background:#333;color:var(--muted);border-radius:4px;padding:1px 6px;font-size:.65rem;}
 
-/* ---- GAME ---- */
-#game-screen{background:var(--bg);align-items:flex-start;padding:12px;}
-.game-wrap{width:100%;max-width:980px;}
+/* ===== ROLE REVEAL ===== */
+#role-screen{align-items:center;justify-content:center;padding:20px;}
+.role-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;
+  padding:28px 24px;max-width:360px;width:100%;text-align:center;}
+.role-card-inner{border-radius:12px;padding:24px 20px;margin:16px 0;}
+.rci-ghost{background:rgba(139,124,246,.08);border:2px solid var(--accent);}
+.rci-human{background:rgba(78,203,113,.08);border:2px solid var(--green);}
+.role-icon{font-size:3.5rem;margin-bottom:8px;}
+.role-title{font-size:1.4rem;font-weight:900;margin-bottom:6px;}
+.role-desc{font-size:.84rem;color:var(--muted);}
+#role-cd{color:var(--muted);font-size:.84rem;margin-top:14px;}
 
-/* header bar */
-.hbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
-.hbar-left{display:flex;align-items:center;gap:16px;}
-.stars-row{display:flex;gap:3px;font-size:1.2rem;}
-.round-badge{background:var(--bg4);border-radius:6px;padding:4px 10px;font-size:.82rem;color:var(--muted);}
-.timer-big{font-size:1.6rem;font-weight:900;color:var(--green);min-width:48px;text-align:right;}
+/* ===== GAME SCREEN ===== */
+#game-screen{display:none;flex-direction:column;}
+#game-screen.active{display:flex;}
+
+/* top header — fixed */
+.g-header{
+  background:var(--bg3);border-bottom:1px solid var(--border);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;z-index:10;
+}
+.g-header-left{display:flex;align-items:center;gap:10px;}
+.stars-row{display:flex;gap:2px;font-size:1.1rem;}
+.round-badge{background:var(--bg4);border-radius:6px;padding:3px 9px;
+  font-size:.78rem;color:var(--muted);}
+.role-badge{border-radius:6px;padding:3px 9px;font-size:.76rem;font-weight:700;}
+.role-ghost{background:rgba(139,124,246,.2);color:var(--accent2);}
+.role-human{background:rgba(78,203,113,.2);color:var(--green);}
+.timer-big{font-size:1.5rem;font-weight:900;color:var(--green);min-width:44px;text-align:right;}
 .timer-big.warn{color:var(--red);animation:pulse 1s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 
-/* grid */
-.game-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-.panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
-.panel-title{font-size:.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-.panel-title span{background:var(--bg4);border-radius:4px;padding:1px 6px;font-size:.75rem;color:var(--accent2);}
+/* tab bar */
+.tab-bar{
+  display:flex;background:var(--bg2);border-bottom:1px solid var(--border);
+  flex-shrink:0;overflow-x:auto;
+}
+.tab-bar::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex:1;min-width:60px;padding:10px 4px 8px;border:none;background:none;
+  color:var(--muted);font-size:.7rem;cursor:pointer;display:flex;
+  flex-direction:column;align-items:center;gap:3px;border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap;
+}
+.tab-btn.active{color:var(--accent2);border-bottom-color:var(--accent2);}
+.tab-btn .tab-icon{font-size:1.2rem;}
+.tab-badge{background:var(--red);color:#fff;border-radius:10px;
+  padding:1px 5px;font-size:.6rem;font-weight:700;min-width:16px;text-align:center;}
 
-/* guest queue */
-.guest-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;transition:border-color .2s;}
+/* tab content */
+.tab-content{flex:1;overflow-y:auto;padding:12px;padding-bottom:calc(12px + var(--safe-bottom));}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* cards */
+.panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+.panel-title{font-size:.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);
+  margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.panel-title .cnt{background:var(--bg4);border-radius:4px;padding:1px 6px;
+  font-size:.72rem;color:var(--accent2);}
+
+/* guest cards */
+.guest-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
+  padding:12px;margin-bottom:10px;transition:border-color .2s;}
 .guest-card.voting{border-color:var(--yellow);}
-.gc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.guest-card.resolved-card{opacity:.6;}
+.gc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
 .gc-name{font-weight:700;font-size:.95rem;}
-.gc-card{font-size:.72rem;border-radius:4px;padding:2px 7px;font-weight:700;}
+.gc-card-badge{font-size:.7rem;border-radius:4px;padding:2px 7px;font-weight:700;}
 .card-ok{background:rgba(78,203,113,.15);color:var(--green);}
 .card-hole{background:rgba(240,192,64,.15);color:var(--yellow);}
 .card-none{background:rgba(224,82,82,.15);color:var(--red);}
-.gc-stats{display:flex;gap:10px;font-size:.78rem;color:var(--muted);margin-bottom:7px;flex-wrap:wrap;}
-.gc-clues{margin-bottom:8px;}
-.clue-item{font-size:.75rem;color:#aaa;padding:2px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;}
-.clue-item::before{content:'•';color:var(--accent);flex-shrink:0;}
-.gc-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.gc-stats{display:flex;flex-wrap:wrap;gap:8px;font-size:.76rem;color:var(--muted);margin-bottom:8px;}
+.gc-stat{background:var(--bg3);border-radius:4px;padding:2px 7px;}
+.gc-clues{margin-bottom:10px;}
+.clue-item{font-size:.76rem;color:#aaa;padding:4px 0;
+  border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:6px;}
+.clue-item::before{content:'•';color:var(--accent);flex-shrink:0;margin-top:1px;}
+.gc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
 .vote-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
-.vote-counts{font-size:.78rem;color:var(--muted);}
 .vote-bar-wrap{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;}
 .vote-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;}
-.btn-sm{padding:5px 10px;border:none;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-sm{padding:8px 14px;border:none;border-radius:8px;font-size:.82rem;
+  font-weight:700;cursor:pointer;transition:all .15s;touch-action:manipulation;}
 .btn-accept{background:rgba(78,203,113,.2);color:var(--green);border:1px solid rgba(78,203,113,.3);}
-.btn-accept:hover{background:rgba(78,203,113,.35);}
+.btn-accept:active{background:rgba(78,203,113,.4);}
 .btn-reject{background:rgba(224,82,82,.2);color:var(--red);border:1px solid rgba(224,82,82,.3);}
-.btn-reject:hover{background:rgba(224,82,82,.35);}
+.btn-reject:active{background:rgba(224,82,82,.4);}
 .btn-scan{background:rgba(139,124,246,.2);color:var(--accent2);border:1px solid rgba(139,124,246,.3);}
-.btn-scan:hover{background:rgba(139,124,246,.35);}
+.btn-scan:active{background:rgba(139,124,246,.4);}
+.btn-sm:disabled{opacity:.35;pointer-events:none;}
 .checkedin-tag{font-size:.72rem;color:var(--muted);font-style:italic;}
 
-/* hotel rooms */
+/* rooms */
 .rooms-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-.room-cell{background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:8px 7px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
-.room-cell:hover{border-color:var(--accent);}
+.room-cell{background:var(--bg4);border:1px solid var(--border);border-radius:7px;
+  padding:8px 4px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.room-cell:active{transform:scale(.95);}
 .room-cell.occupied{border-color:var(--blue);}
 .room-cell.my-room{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(184,174,255,.2);}
-.room-cell .rnum{font-size:.8rem;font-weight:700;color:var(--accent2);}
-.room-cell .rguest{font-size:.65rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.room-cell .ricon{font-size:1rem;margin-bottom:2px;}
-.clue-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--yellow);border-radius:50%;}
+.room-cell .rnum{font-size:.78rem;font-weight:700;color:var(--accent2);}
+.room-cell .rguest{font-size:.6rem;color:var(--muted);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.room-cell .ricon{font-size:.95rem;margin-bottom:2px;}
+.clue-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;
+  background:var(--yellow);border-radius:50%;}
 
 /* tasks */
-.task-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.task-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;
+  padding:12px;margin-bottom:8px;}
 .task-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
 .task-name{font-weight:700;font-size:.9rem;}
-.task-done{color:var(--green);font-size:.78rem;}
-.task-desc{font-size:.78rem;color:var(--muted);margin-bottom:7px;}
-.task-prog{font-size:.75rem;color:var(--blue);margin-bottom:6px;}
-.progress-bar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:7px;}
+.task-done{color:var(--green);font-size:.76rem;}
+.task-desc{font-size:.78rem;color:var(--muted);margin-bottom:6px;}
+.task-prog{font-size:.75rem;color:var(--blue);margin-bottom:5px;}
+.progress-bar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:8px;}
 .progress-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .3s;}
 
-/* clues panel */
-.clue-log{max-height:160px;overflow-y:auto;font-size:.78rem;}
-.clue-log::-webkit-scrollbar{width:3px;}
-.clue-log::-webkit-scrollbar-thumb{background:var(--border);}
-.clue-entry{padding:4px 0;border-bottom:1px solid var(--border);color:#aaa;display:flex;gap:6px;}
-.clue-entry .ce-src{color:var(--yellow);font-size:.7rem;flex-shrink:0;}
+/* clue log */
+.clue-entry{padding:6px 0;border-bottom:1px solid var(--border);
+  color:#aaa;display:flex;gap:6px;font-size:.78rem;}
+.ce-src{color:var(--yellow);font-size:.68rem;flex-shrink:0;padding-top:1px;}
 
 /* event log */
-.log-wrap{grid-column:1/-1;}
-.elog{max-height:120px;overflow-y:auto;font-size:.78rem;}
-.elog::-webkit-scrollbar{width:3px;}
-.elog::-webkit-scrollbar-thumb{background:var(--border);}
-.log-line{padding:3px 0;border-bottom:1px solid var(--bg4);color:var(--muted);}
+.log-line{padding:4px 0;border-bottom:1px solid var(--bg4);
+  color:var(--muted);font-size:.78rem;}
 .log-line.good{color:var(--green);}
 .log-line.bad{color:var(--red);}
 .log-line.info{color:var(--accent2);}
 .log-line.warn{color:var(--yellow);}
 
-/* vote end game */
-.vote-end-row{grid-column:1/-1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:14px;}
+/* players list */
+.p-row{display:flex;align-items:center;gap:8px;padding:8px 0;
+  border-bottom:1px solid var(--border);font-size:.84rem;}
+.ava{width:28px;height:28px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-weight:700;font-size:.75rem;flex-shrink:0;}
+
+/* vote end */
+.vote-end-panel{background:var(--bg3);border:1px solid var(--accent);
+  border-radius:var(--radius);padding:14px;margin-bottom:10px;}
 .ve-bar-wrap{flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;}
 .ve-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;}
 
-/* role badge in header */
-.role-badge{border-radius:6px;padding:4px 10px;font-size:.8rem;font-weight:700;}
-.role-ghost{background:rgba(139,124,246,.2);color:var(--accent2);}
-.role-human{background:rgba(78,203,113,.2);color:var(--green);}
+/* all-resolved banner */
+.resolved-banner{background:rgba(78,203,113,.12);border:1px solid var(--green);
+  border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:.84rem;
+  color:var(--green);display:none;align-items:center;gap:8px;}
+.resolved-banner.show{display:flex;}
 
-/* ---- ROLE REVEAL ---- */
-#role-screen{background:var(--bg);}
-.role-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:100%;text-align:center;}
-.role-card-inner{border-radius:12px;padding:28px 24px;margin:18px 0;}
-.rci-ghost{background:rgba(139,124,246,.08);border:2px solid var(--accent);}
-.rci-human{background:rgba(78,203,113,.08);border:2px solid var(--green);}
-.role-icon{font-size:4rem;margin-bottom:8px;}
-.role-title{font-size:1.5rem;font-weight:900;margin-bottom:6px;}
-.role-desc{font-size:.85rem;color:var(--muted);}
-#role-cd{color:var(--muted);font-size:.85rem;margin-top:14px;}
-
-/* ---- END ---- */
-#end-screen{background:var(--bg);}
-.end-box{background:var(--bg3);border-radius:16px;padding:32px;max-width:440px;width:100%;text-align:center;}
+/* ===== END ===== */
+#end-screen{align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+.end-box{background:var(--bg3);border-radius:16px;padding:24px;
+  max-width:440px;width:100%;text-align:center;}
 .end-win{border:2px solid var(--green);}
 .end-lose{border:2px solid var(--red);}
-#end-icon{font-size:4rem;}
-#end-title{font-size:2rem;font-weight:900;margin:10px 0;}
-#end-desc{color:var(--muted);margin-bottom:18px;font-size:.9rem;}
-.reveal-list{margin-bottom:16px;width:100%;}
-.rev-item{display:flex;align-items:center;gap:10px;background:var(--bg4);border-radius:7px;padding:9px 12px;margin-bottom:6px;text-align:left;font-size:.88rem;}
-.rev-room{border-radius:7px;padding:9px 12px;margin-bottom:6px;background:var(--bg4);display:flex;align-items:center;gap:10px;font-size:.82rem;}
+#end-icon{font-size:3.5rem;}
+#end-title{font-size:1.8rem;font-weight:900;margin:8px 0;}
+#end-desc{color:var(--muted);margin-bottom:14px;font-size:.88rem;}
+.reveal-section{margin-bottom:12px;width:100%;text-align:left;}
+.reveal-section-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:6px;}
+.rev-item{display:flex;align-items:center;gap:8px;background:var(--bg4);
+  border-radius:7px;padding:8px 10px;margin-bottom:5px;font-size:.84rem;}
 .rev-ghost{color:var(--accent2);}
 .rev-human{color:var(--green);}
-.final-stars{font-size:1.4rem;margin-bottom:8px;}
+.final-stars{font-size:1.3rem;margin-bottom:8px;}
 
-/* ---- TOAST ---- */
-#toast-container{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:7px;z-index:9999;}
-.toast{background:var(--bg3);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.5);animation:tin .3s ease;max-width:280px;}
+/* ===== TOAST ===== */
+#toast-container{position:fixed;bottom:calc(70px + var(--safe-bottom));right:12px;
+  display:flex;flex-direction:column;gap:6px;z-index:9999;pointer-events:none;}
+.toast{background:var(--bg3);border-left:4px solid var(--accent);border-radius:8px;
+  padding:10px 13px;font-size:.82rem;box-shadow:0 4px 14px rgba(0,0,0,.6);
+  animation:tin .25s ease;max-width:260px;pointer-events:auto;}
 .toast.good{border-color:var(--green);}
 .toast.bad{border-color:var(--red);}
 .toast.warn{border-color:var(--yellow);}
 .toast.info{border-color:var(--blue);}
 @keyframes tin{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
-
-/* MY ROLE DISPLAY */
-#my-role-chip{font-size:.82rem;}
-
-/* responsive */
-@media(max-width:700px){
-  .game-grid{grid-template-columns:1fr;}
-  .rooms-grid{grid-template-columns:repeat(4,1fr);}
-  .hbar{flex-direction:column;align-items:flex-start;}
-}
 </style>
 </head>
 <body>
 
-<!-- ===== LOBBY ===== -->
+<!-- LOBBY -->
 <div id="lobby-screen" class="screen active">
   <div class="lobby-wrap">
     <div class="game-logo">
       <h1>Hotel <span>Ghost</span> 👻</h1>
-      <p>คัดกรองผีออกจากโรงแรม — ก่อนที่จะสายเกินไป</p>
+      <p>คัดกรองผีออกจากโรงแรม ก่อนที่จะสายเกินไป</p>
     </div>
-    <div class="inp-group"><label>ชื่อผู้เล่น</label><input id="inp-name" placeholder="กรอกชื่อ..." maxlength="16"></div>
-    <div class="inp-group"><label>รหัสห้อง</label><input id="inp-room" placeholder="ใส่รหัส หรือปล่อยว่างเพื่อสร้างใหม่" maxlength="8"></div>
+    <div class="inp-group">
+      <label>ชื่อผู้เล่น</label>
+      <input id="inp-name" placeholder="กรอกชื่อ..." maxlength="16" autocomplete="off">
+    </div>
+    <div class="inp-group">
+      <label>รหัสห้อง</label>
+      <input id="inp-room" placeholder="ปล่อยว่างเพื่อสร้างใหม่" maxlength="8" autocomplete="off">
+    </div>
     <button class="btn btn-main" onclick="joinRoom()">เข้าห้อง / สร้างห้อง</button>
   </div>
 </div>
 
-<!-- ===== WAITING ===== -->
+<!-- WAITING -->
 <div id="waiting-screen" class="screen">
   <div class="wait-box">
     <div class="room-badge">
       <div class="lbl">รหัสห้อง</div>
       <div class="rid" id="w-roomid">----</div>
-      <button class="copy-btn" onclick="copyRoom()">คัดลอก</button>
+      <button class="copy-btn" onclick="copyRoom()">📋 คัดลอก</button>
     </div>
     <div id="w-player-list" class="player-grid"></div>
-    <div id="w-count" style="color:var(--muted);font-size:.82rem;margin-bottom:14px;"></div>
+    <div id="w-count" style="color:var(--muted);font-size:.8rem;margin-bottom:12px;"></div>
     <button class="btn btn-main" id="btn-start" onclick="startGame()" disabled>เริ่มเกม</button>
     <button class="btn btn-ghost" id="btn-wait" style="display:none">รอ host เริ่ม...</button>
   </div>
 </div>
 
-<!-- ===== ROLE REVEAL ===== -->
+<!-- ROLE REVEAL -->
 <div id="role-screen" class="screen">
   <div class="role-box">
     <h2 style="margin-bottom:4px;">บทบาทของคุณ</h2>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:4px;">จำไว้ให้ดี — ห้ามบอกคนอื่น</p>
+    <p style="color:var(--muted);font-size:.82rem;">จำไว้ให้ดี — ห้ามบอกคนอื่น</p>
     <div id="role-card-inner"></div>
     <div id="role-cd"></div>
   </div>
 </div>
 
-<!-- ===== GAME ===== -->
+<!-- GAME -->
 <div id="game-screen" class="screen">
-  <div class="game-wrap">
 
-    <!-- header -->
-    <div class="hbar">
-      <div class="hbar-left">
-        <div>
-          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">คะแนนดาว</div>
-          <div class="stars-row" id="stars-row">⭐⭐⭐⭐⭐</div>
-        </div>
-        <div class="round-badge">รอบ <span id="round-num">1</span></div>
-        <div id="my-role-chip"></div>
-      </div>
-      <div>
-        <div style="font-size:.68rem;color:var(--muted);text-align:right;">เวลารอบนี้</div>
-        <div class="timer-big" id="timer-display">20</div>
-      </div>
+  <!-- header -->
+  <div class="g-header">
+    <div class="g-header-left">
+      <div class="stars-row" id="stars-row">⭐⭐⭐⭐⭐</div>
+      <div class="round-badge">รอบ <span id="round-num">1</span></div>
+      <div id="my-role-chip"></div>
     </div>
+    <div class="timer-big" id="timer-display">90</div>
+  </div>
 
-    <!-- main grid -->
-    <div class="game-grid">
+  <!-- tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('guests')" id="tab-guests">
+      <span class="tab-icon">🧍</span>
+      <span>แขก</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('rooms')" id="tab-rooms">
+      <span class="tab-icon">🏨</span>
+      <span>ห้อง</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('tasks')" id="tab-tasks">
+      <span class="tab-icon">📋</span>
+      <span>ภารกิจ</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('clues')" id="tab-clues">
+      <span class="tab-icon">🔍</span>
+      <span>เบาะแส</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('log')" id="tab-log">
+      <span class="tab-icon">📜</span>
+      <span>บันทึก</span>
+    </button>
+  </div>
 
-      <!-- col 1: guest queue -->
+  <!-- tab content -->
+  <div class="tab-content">
+
+    <!-- TAB: guests -->
+    <div class="tab-panel active" id="panel-guests">
+      <div class="resolved-banner" id="resolved-banner">
+        ✅ แขกทุกคนได้รับการตัดสินแล้ว!
+        <button class="btn-sm btn-accept" style="margin-left:auto;" onclick="voteEnd()" id="btn-vote-end-banner">โหวตจบรอบ</button>
+      </div>
       <div class="panel">
-        <div class="panel-title">🧍 แถวรอแขก <span id="queue-count">0</span></div>
+        <div class="panel-title">🧍 แถวรอ <span class="cnt" id="queue-count">0</span></div>
         <div id="guest-list"></div>
       </div>
-
-      <!-- col 2: hotel rooms + tasks -->
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="panel">
-          <div class="panel-title">🏨 ห้องพัก</div>
-          <div class="rooms-grid" id="rooms-grid"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">📋 ภารกิจ</div>
-          <div id="tasks-list"></div>
-        </div>
-      </div>
-
-      <!-- col 3: clues + players -->
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="panel">
-          <div class="panel-title">🔍 เบาะแส</div>
-          <div class="clue-log" id="clue-log"></div>
-          <div id="clue-empty" style="color:var(--muted);font-size:.78rem;text-align:center;padding:8px 0;">ยังไม่มีเบาะแส</div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">👥 ผู้เล่น</div>
-          <div id="player-list-game"></div>
-        </div>
-      </div>
-
-      <!-- vote end (full width) -->
-      <div class="vote-end-row">
-        <div style="font-size:.85rem;">โหวตจบเกม<br><span style="font-size:.72rem;color:var(--muted);">ต้องไม่มีผีอยู่ในโรงแรม</span></div>
-        <div class="ve-bar-wrap"><div class="ve-bar-fill" id="ve-fill" style="width:0%"></div></div>
-        <div id="ve-text" style="font-size:.82rem;color:var(--muted);min-width:40px;text-align:center;">0/1</div>
-        <button class="btn-sm btn-scan" onclick="voteEnd()" id="btn-vote-end">โหวต</button>
-      </div>
-
-      <!-- log (full width) -->
-      <div class="panel log-wrap">
-        <div class="panel-title">📜 บันทึกเหตุการณ์</div>
-        <div class="elog" id="elog"></div>
-      </div>
-
     </div>
+
+    <!-- TAB: rooms -->
+    <div class="tab-panel" id="panel-rooms">
+      <div class="panel">
+        <div class="panel-title">🏨 ห้องพัก</div>
+        <div class="rooms-grid" id="rooms-grid"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">👥 ผู้เล่น</div>
+        <div id="player-list-game"></div>
+      </div>
+    </div>
+
+    <!-- TAB: tasks -->
+    <div class="tab-panel" id="panel-tasks">
+      <div class="panel">
+        <div class="panel-title">📋 ภารกิจ</div>
+        <div id="tasks-list"></div>
+      </div>
+    </div>
+
+    <!-- TAB: clues -->
+    <div class="tab-panel" id="panel-clues">
+      <div class="panel">
+        <div class="panel-title">🔍 เบาะแสที่พบ</div>
+        <div id="clue-list"></div>
+        <div id="clue-empty" style="color:var(--muted);font-size:.78rem;text-align:center;padding:8px 0;">ยังไม่มีเบาะแส</div>
+      </div>
+    </div>
+
+    <!-- TAB: log -->
+    <div class="tab-panel" id="panel-log">
+      <!-- vote end -->
+      <div class="vote-end-panel">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="font-size:.85rem;flex:1;">โหวตจบเกม<br>
+            <span style="font-size:.72rem;color:var(--muted);">ใช้เมื่อกำจัดผีหมดแล้ว</span>
+          </div>
+          <button class="btn-sm btn-scan" onclick="voteEnd()" id="btn-vote-end">โหวต</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="ve-bar-wrap"><div class="ve-bar-fill" id="ve-fill" style="width:0%"></div></div>
+          <div id="ve-text" style="font-size:.8rem;color:var(--muted);min-width:36px;text-align:right;">0/1</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📜 บันทึกเหตุการณ์</div>
+        <div id="elog"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- ===== END ===== -->
+<!-- END -->
 <div id="end-screen" class="screen">
   <div class="end-box" id="end-box">
     <div id="end-icon">🎉</div>
     <div id="end-title">ชนะแล้ว!</div>
     <div class="final-stars" id="final-stars"></div>
     <div id="end-desc"></div>
-    <div class="reveal-list" id="reveal-rooms"></div>
-    <div class="reveal-list" id="reveal-players"></div>
-    <div class="reveal-list" id="reveal-guests"></div>
+    <div id="reveal-rooms" class="reveal-section"></div>
+    <div id="reveal-players" class="reveal-section"></div>
+    <div id="reveal-guests" class="reveal-section"></div>
     <button class="btn btn-main" onclick="location.reload()">เล่นใหม่</button>
   </div>
 </div>
 
-<!-- Toast container -->
+<!-- Toast -->
 <div id="toast-container"></div>
 
 <script>
 const socket = io();
-let myRoomId = '';
-let myRole = 'human';
-let myName = '';
-let isHost = false;
+let myRoomId='', myRole='human', myName='', isHost=false;
+let guestMap={}, clues=[], currentTab='guests', votedEnd=false;
+let tabBadges={guests:0,clues:0,log:0};
 
-// state
-let guestMap = {};
-let playerMap = {};
-let clues = [];
-let tasks = [];
-let currentRoom = 'lobby';
-let votedEnd = false;
+const COLORS=['#8b7cf6','#4ecb71','#e05252','#f0c040','#4eb8cb','#e09450'];
+function avatarColor(n){let h=0;for(let c of n)h=(h+c.charCodeAt(0))%COLORS.length;return COLORS[h];}
+function initials(n){return n.slice(0,2).toUpperCase();}
 
-const COLORS = ['#8b7cf6','#4ecb71','#e05252','#f0c040','#4eb8cb','#e09450'];
-function avatarColor(name){ let h=0;for(let c of name)h=(h+c.charCodeAt(0))%COLORS.length;return COLORS[h]; }
-function initials(name){ return name.slice(0,2).toUpperCase(); }
-function show(id){ document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';}); const el=document.getElementById(id);el.style.display='flex';el.classList.add('active'); }
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+}
 
-function toast(msg,type='',dur=3200){
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  // clear badge
+  clearTabBadge(tab);
+}
+
+function setTabBadge(tab, n){
+  if(currentTab===tab){return;}
+  const btn=document.getElementById('tab-'+tab);
+  let badge=btn.querySelector('.tab-badge');
+  if(!badge){badge=document.createElement('span');badge.className='tab-badge';btn.appendChild(badge);}
+  badge.textContent=n>9?'9+':n;
+}
+function clearTabBadge(tab){
+  const btn=document.getElementById('tab-'+tab);
+  const badge=btn?.querySelector('.tab-badge');
+  if(badge)badge.remove();
+  tabBadges[tab]=0;
+}
+function bumpBadge(tab){
+  tabBadges[tab]=(tabBadges[tab]||0)+1;
+  setTabBadge(tab,tabBadges[tab]);
+}
+
+function toast(msg,type='',dur=3000){
   const t=document.createElement('div');
   t.className='toast '+(type||'');
   t.textContent=msg;
-  const c=document.getElementById('toast-container');
-  c.appendChild(t);
+  document.getElementById('toast-container').appendChild(t);
   setTimeout(()=>t.remove(),dur);
 }
+
 function addLog(text,type=''){
   const el=document.getElementById('elog');
   if(!el)return;
   const d=document.createElement('div');
   d.className='log-line '+(type||'');
   d.textContent=text;
-  el.appendChild(d);
-  el.scrollTop=el.scrollHeight;
+  el.prepend(d); // newest on top
+  if(currentTab!=='log') bumpBadge('log');
 }
 
 // ---- JOIN ----
@@ -363,14 +478,13 @@ function joinRoom(){
   const room=document.getElementById('inp-room').value.trim().toUpperCase()||
     Math.random().toString(36).slice(2,6).toUpperCase();
   if(!name){toast('ใส่ชื่อก่อนนะ','bad');return;}
-  myName=name;
-  myRoomId=room;
+  myName=name; myRoomId=room;
   socket.emit('join_room',{roomId:room,playerName:name});
 }
 function copyRoom(){
   navigator.clipboard.writeText(myRoomId).then(()=>toast('คัดลอกรหัสห้องแล้ว','info'));
 }
-function startGame(){ socket.emit('start_game'); }
+function startGame(){socket.emit('start_game');}
 
 socket.on('lobby_update',({players,count})=>{
   show('waiting-screen');
@@ -393,7 +507,6 @@ socket.on('lobby_update',({players,count})=>{
   document.getElementById('btn-start').disabled=count<1;
 });
 
-// ---- ROLE ----
 socket.on('your_role',({role})=>{
   myRole=role;
   show('role-screen');
@@ -402,47 +515,45 @@ socket.on('your_role',({role})=>{
     <div class="role-card-inner ${isGhost?'rci-ghost':'rci-human'}">
       <div class="role-icon">${isGhost?'👻':'👤'}</div>
       <div class="role-title" style="color:${isGhost?'var(--accent2)':'var(--green)'}">${isGhost?'คุณคือผี':'คุณคือมนุษย์'}</div>
-      <div class="role-desc">${isGhost?'ซ่อนตัว อย่าให้โดนโหวตไล่ออก แทรกซึมเป็นพนักงาน':'คัดกรองแขกและพนักงานที่เป็นผีให้หมด'}</div>
+      <div class="role-desc">${isGhost?'ซ่อนตัว อย่าให้โดนโหวตไล่ออก':'คัดกรองแขกและพนักงานที่เป็นผีให้หมด'}</div>
     </div>`;
   let cd=4;
   const cdEl=document.getElementById('role-cd');
   const iv=setInterval(()=>{
     cdEl.textContent=`เข้าโรงแรมใน ${cd} วิ...`;
-    cd--;
-    if(cd<0){clearInterval(iv);}
+    cd--;if(cd<0)clearInterval(iv);
   },1000);
 });
 
-// ---- ROUND START ----
-socket.on('round_start',({round,tasks:t,guestCount})=>{
+socket.on('round_start',({round,guestCount})=>{
   show('game-screen');
+  switchTab('guests');
+  votedEnd=false;
+  document.getElementById('btn-vote-end').disabled=false;
   document.getElementById('round-num').textContent=round;
-  toast(`🔔 รอบ ${round} เริ่มต้น — แขก ${guestCount} คนรอเช็คอิน`,'info');
-  addLog(`--- รอบ ${round} เริ่มต้น ---`,'info');
   const chip=document.getElementById('my-role-chip');
   chip.innerHTML=myRole==='ghost'
     ?'<span class="role-badge role-ghost">👻 ผี</span>'
     :'<span class="role-badge role-human">👤 มนุษย์</span>';
+  toast(`🔔 รอบ ${round} — แขก ${guestCount} คน`,'info');
+  addLog(`─── รอบ ${round} เริ่มต้น ───`,'info');
 });
 
 socket.on('round_timer',({roundTime})=>{
   const el=document.getElementById('timer-display');
   el.textContent=roundTime;
-  el.className='timer-big'+(roundTime<=7?' warn':'');
+  el.className='timer-big'+(roundTime<=10?' warn':'');
 });
 
-socket.on('round_end',({round,ghostsIn,starsLost,stars})=>{
+socket.on('round_end',({round,ghostsIn,stars})=>{
   if(ghostsIn>0){
-    toast(`⚠️ รอบ ${round} จบ — ผีอยู่ในโรงแรม ${ghostsIn} ตัว! เสีย ${starsLost} ดาว`,'bad',4000);
-    addLog(`รอบ ${round} จบ — ผีซ่อนอยู่ ${ghostsIn} ตัว เสีย ${starsLost} ดาว`,'bad');
+    toast(`⚠️ รอบ ${round} จบ — ผีในโรงแรม ${ghostsIn} ตัว`,'bad',4000);
   } else {
-    toast(`✅ รอบ ${round} จบ — ไม่มีผีหลุดรอด!`,'good',3000);
-    addLog(`รอบ ${round} จบ — ปลอดภัย`,'good');
+    toast(`✅ รอบ ${round} จบ — ปลอดภัย!`,'good');
   }
   updateStars(stars);
 });
 
-// ---- STATE UPDATE ----
 socket.on('state_update',(state)=>{
   updateStars(state.stars);
   document.getElementById('round-num').textContent=state.round;
@@ -451,10 +562,13 @@ socket.on('state_update',(state)=>{
   updateTasksList(state.tasks);
   updatePlayerListGame(state.players);
   updateVoteEnd(state.voteEnd,state.players);
-  // clues
-  if(state.clues&&state.clues.length>0){
-    clues=state.clues;
-    renderClues();
+  if(state.clues&&state.clues.length>0){clues=state.clues;renderClues();}
+  // resolved banner
+  const banner=document.getElementById('resolved-banner');
+  if(state.allGuestsResolved && !votedEnd){
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
   }
 });
 
@@ -462,48 +576,65 @@ function updateStars(n){
   const r=document.getElementById('stars-row');
   if(!r)return;
   r.innerHTML='';
-  for(let i=0;i<5;i++) r.innerHTML+=(i<n?'⭐':'☆');
+  for(let i=0;i<5;i++)r.innerHTML+=(i<n?'⭐':'☆');
 }
 
 function updateGuestList(queue){
   const el=document.getElementById('guest-list');
   if(!el)return;
-  document.getElementById('queue-count').textContent=queue.filter(g=>!g.checkedIn).length;
+  const pending=queue.filter(g=>!g.resolved&&!g.checkedIn);
+  document.getElementById('queue-count').textContent=pending.length;
   el.innerHTML='';
   queue.forEach(g=>{
     guestMap[g.id]=g;
     const div=document.createElement('div');
-    div.className='guest-card'+(g.voteActive?' voting':'');
+    div.className='guest-card'+(g.voteActive?' voting':'')+(g.resolved&&!g.checkedIn?' resolved-card':'');
     div.innerHTML=buildGuestCard(g);
     el.appendChild(div);
   });
 }
 
 function buildGuestCard(g){
-  const cardClass={'ปกติ':'card-ok','เจาะรู':'card-hole','ไม่มีบัตร':'card-none'}[g.cardType]||'card-ok';
-  const cardIcon={'ปกติ':'🪪','เจาะรู':'🔲','ไม่มีบัตร':'❌'}[g.cardType]||'🪪';
+  const cc={'ปกติ':'card-ok','เจาะรู':'card-hole','ไม่มีบัตร':'card-none'}[g.cardType]||'card-ok';
+  const ci={'ปกติ':'🪪','เจาะรู':'🔲','ไม่มีบัตร':'❌'}[g.cardType]||'🪪';
   if(g.checkedIn){
-    return `<div class="gc-head"><span class="gc-name">${g.name}</span><span class="checkedin-tag">เช็คอิน ห้อง ${g.assignedRoom}</span></div>`;
+    return `<div class="gc-head">
+      <span class="gc-name">${g.name}</span>
+      <span class="checkedin-tag">✅ เช็คอิน ห้อง ${g.assignedRoom}</span>
+    </div>`;
+  }
+  if(g.resolved){
+    return `<div class="gc-head">
+      <span class="gc-name">${g.name}</span>
+      <span style="font-size:.72rem;color:var(--red);">❌ ถูกไล่ออก</span>
+    </div>`;
   }
   const clueHtml=g.clues.map(c=>`<div class="clue-item">${c}</div>`).join('');
   const voteHtml=g.voteActive?`
     <div class="vote-row">
-      <button class="btn-sm btn-accept" onclick="voteGuest('${g.id}','accept')">✅ รับ (${g.votes.accept})</button>
-      <button class="btn-sm btn-reject" onclick="voteGuest('${g.id}','reject')">❌ ไล่ (${g.votes.reject})</button>
-      <div class="vote-bar-wrap"><div class="vote-bar-fill" style="width:${g.votes.accept+g.votes.reject>0?Math.round(g.votes.accept/(g.votes.accept+g.votes.reject)*100):50}%"></div></div>
-    </div>`:'<div style="font-size:.72rem;color:var(--muted);">รอการโหวต...</div>';
+      <button class="btn-sm btn-accept" onclick="voteGuest('${g.id}','accept')">✅ รับ ${g.votes.accept>0?'('+g.votes.accept+')':''}</button>
+      <button class="btn-sm btn-reject" onclick="voteGuest('${g.id}','reject')">❌ ไล่ ${g.votes.reject>0?'('+g.votes.reject+')':''}</button>
+    </div>
+    <div style="margin-top:6px;">
+      <div class="vote-bar-wrap" style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
+        <div class="vote-bar-fill" style="width:${g.votes.accept+g.votes.reject>0?Math.round(g.votes.accept/(g.votes.accept+g.votes.reject)*100):50}%;height:100%;background:var(--accent);border-radius:3px;transition:width .3s;"></div>
+      </div>
+    </div>`
+    :'<div style="font-size:.72rem;color:var(--muted);margin-top:4px;">⏳ รอการโหวต...</div>';
   return `
     <div class="gc-head">
       <span class="gc-name">${g.name}</span>
-      <span class="gc-card ${cardClass}">${cardIcon} ${g.cardType}</span>
+      <span class="gc-card-badge ${cc}">${ci} ${g.cardType}</span>
     </div>
     <div class="gc-stats">
-      <span>${g.gender}</span><span>อายุ ${g.age} ปี</span>
-      <span>สูง ${g.height} ซม.</span><span>หนัก ${g.weight} กก.</span>
+      <span class="gc-stat">${g.gender}</span>
+      <span class="gc-stat">อายุ ${g.age}</span>
+      <span class="gc-stat">สูง ${g.height}</span>
+      <span class="gc-stat">หนัก ${g.weight}</span>
     </div>
     <div class="gc-clues">${clueHtml}</div>
     <div class="gc-actions">
-      <button class="btn-sm btn-scan" onclick="scanGuest('${g.id}')">🔎 สแกนทันที</button>
+      <button class="btn-sm btn-scan" onclick="scanGuest('${g.id}')">🔎 สแกน (-1⭐ ถ้าผิด)</button>
     </div>
     ${voteHtml}`;
 }
@@ -514,12 +645,11 @@ function updateRoomsGrid(hotelRooms,players){
   el.innerHTML='';
   hotelRooms.forEach(r=>{
     const isMe=players&&players.some(p=>p.id===socket.id&&p.currentRoom===r.id);
-    const hasClue=!!r.clueLeft;
     const div=document.createElement('div');
     div.className='room-cell'+(r.occupied?' occupied':'')+(isMe?' my-room':'');
     div.onclick=()=>moveToRoom(r.id);
     div.innerHTML=`
-      ${hasClue?'<div class="clue-dot"></div>':''}
+      ${r.clueLeft?'<div class="clue-dot"></div>':''}
       <div class="ricon">${r.occupied?'🛏️':'🚪'}</div>
       <div class="rnum">${r.id}</div>
       <div class="rguest">${r.guestName||'ว่าง'}</div>`;
@@ -527,15 +657,18 @@ function updateRoomsGrid(hotelRooms,players){
   });
 }
 
-function updateTasksList(t){
+function updateTasksList(tasks){
   const el=document.getElementById('tasks-list');
   if(!el)return;
   el.innerHTML='';
-  if(!t||t.length===0){el.innerHTML='<div style="color:var(--muted);font-size:.8rem;">ไม่มีภารกิจ</div>';return;}
-  t.forEach(task=>{
+  if(!tasks||tasks.length===0){
+    el.innerHTML='<div style="color:var(--muted);font-size:.8rem;">ยังไม่มีภารกิจ</div>';return;
+  }
+  tasks.forEach(task=>{
     const joined=Object.keys(task.progress||{}).length;
     const needed=task.needPlayers||1;
     const pct=Math.min(100,Math.round(joined/needed*100));
+    const alreadyJoined=task.progress&&task.progress[socket.id];
     const div=document.createElement('div');
     div.className='task-card';
     div.innerHTML=`
@@ -544,10 +677,14 @@ function updateTasksList(t){
         ${task.completed?'<span class="task-done">✅ สำเร็จ</span>':''}
       </div>
       <div class="task-desc">${task.desc}</div>
-      ${task.timeBonus>0?`<div style="font-size:.72rem;color:var(--blue)">⏱️ +${task.timeBonus} วิเมื่อสำเร็จ</div>`:''}
+      ${task.timeBonus>0?`<div style="font-size:.72rem;color:var(--blue);margin-bottom:5px;">⏱️ +${task.timeBonus} วิเมื่อสำเร็จ</div>`:''}
       <div class="task-prog">${joined}/${needed} คน</div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      ${!task.completed?`<button class="btn-sm btn-accept" onclick="joinTask('${task.id}')">เข้าร่วม</button>`:''}`;
+      ${!task.completed?`<button class="btn-sm btn-accept" 
+        onclick="joinTask('${task.id}',this)" 
+        ${alreadyJoined?'disabled':''}>
+        ${alreadyJoined?'✅ เข้าร่วมแล้ว':'เข้าร่วม'}
+      </button>`:''}`;
     el.appendChild(div);
   });
 }
@@ -558,11 +695,14 @@ function updatePlayerListGame(players){
   el.innerHTML='';
   players.forEach(p=>{
     const div=document.createElement('div');
-    div.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.82rem;';
-    div.innerHTML=`<div class="ava" style="background:${avatarColor(p.name)};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">${initials(p.name)}</div>
+    div.className='p-row';
+    div.innerHTML=`
+      <div class="ava" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
       <span>${p.name}</span>
-      <span style="margin-left:auto;color:var(--muted);font-size:.72rem;">${p.currentRoom==='lobby'?'ล็อบบี้':'ห้อง '+p.currentRoom}</span>
-      ${p.isAI?'<span class="ai-tag">AI</span>':''}`;
+      ${p.isAI?'<span class="ai-tag">AI</span>':''}
+      <span style="margin-left:auto;color:var(--muted);font-size:.72rem;">
+        ${p.currentRoom==='lobby'?'ล็อบบี้':'ห้อง '+p.currentRoom}
+      </span>`;
     el.appendChild(div);
   });
 }
@@ -580,106 +720,132 @@ function updateVoteEnd(voteEnd,players){
 }
 
 function renderClues(){
-  const el=document.getElementById('clue-log');
+  const el=document.getElementById('clue-list');
   const empty=document.getElementById('clue-empty');
   if(!el)return;
   el.innerHTML='';
   if(clues.length===0){if(empty)empty.style.display='';return;}
   if(empty)empty.style.display='none';
-  clues.forEach(c=>{
+  [...clues].reverse().forEach(c=>{
     const d=document.createElement('div');
     d.className='clue-entry';
     d.innerHTML=`<span class="ce-src">[${c.source==='task'?'ภารกิจ':c.roomId?'ห้อง '+c.roomId:'ระบบ'}]</span><span>${c.text}</span>`;
     el.appendChild(d);
   });
-  el.scrollTop=el.scrollHeight;
 }
 
 // ---- ACTIONS ----
 function voteGuest(id,vote){
   socket.emit('vote_guest',{guestId:id,vote});
-  toast(vote==='accept'?'✅ โหวตรับแขก':'❌ โหวตไล่แขก','info');
 }
+
 function scanGuest(id){
   socket.emit('scan_guest',{guestId:id});
 }
-function joinTask(id){
+
+// FIX: disable button immediately on click, re-enable if server says error
+function joinTask(id, btn){
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังเข้าร่วม...';}
   socket.emit('join_task',{taskId:id});
 }
+
 function moveToRoom(id){
-  currentRoom=id;
   socket.emit('move_room',{roomId:id});
+  switchTab('rooms');
 }
+
 function voteEnd(){
   if(votedEnd){toast('คุณโหวตไปแล้ว','warn');return;}
   votedEnd=true;
   socket.emit('vote_end_game');
   document.getElementById('btn-vote-end').disabled=true;
+  const b=document.getElementById('btn-vote-end-banner');
+  if(b)b.disabled=true;
   toast('โหวตจบเกมแล้ว','info');
+  document.getElementById('resolved-banner').classList.remove('show');
 }
 
-// ---- GAME EVENTS ----
+// ---- EVENTS ----
 socket.on('guest_vote_open',({guest})=>{
   guestMap[guest.id]=guest;
-  toast(`🧾 ${guest.name} รอโหวต — บัตร: ${guest.cardType}`,'warn',5000);
-  addLog(`${guest.name} รอการโหวต (บัตร: ${guest.cardType})`,'warn');
-  socket.emit('state_update'); // re-request via state
+  toast(`🧾 ${guest.name} รอโหวต — ${guest.cardType}`,'warn',5000);
+  addLog(`${guest.name} รอการโหวต`,'warn');
+  if(currentTab!=='guests') bumpBadge('guests');
+  socket.emit('get_state');
 });
 
 socket.on('guest_vote_cast',({guestId,vote,voterName,accept,reject})=>{
-  if(guestMap[guestId]){
-    guestMap[guestId].votes={...guestMap[guestId].votes,accept,reject};
-  }
+  if(guestMap[guestId]) guestMap[guestId].votes={...guestMap[guestId].votes,accept,reject};
   addLog(`${voterName} โหวต${vote==='accept'?'รับ':'ไล่'} ${guestMap[guestId]?.name||'?'}`,'info');
 });
 
 socket.on('guest_rejected',({guestId,guestName,correct,stars})=>{
-  toast(correct?`👻 ${guestName} โดนโหวตออก — เป็นผีจริง!`:`😱 ${guestName} เป็นคน! ไล่ออกผิด เสีย 1 ดาว`,correct?'good':'bad',4000);
-  addLog(correct?`${guestName} โดนโหวตออก — เป็นผี ✅`:`${guestName} โดนไล่ออกทั้งที่เป็นคน ❌`,correct?'good':'bad');
+  toast(correct
+    ?`👻 ${guestName} โดนโหวตออก — เป็นผีจริง!`
+    :`😱 ${guestName} เป็นคน! ไล่ออกผิด เสีย 1 ดาว`,
+    correct?'good':'bad',4000);
+  addLog(correct
+    ?`${guestName} โดนโหวตออก — เป็นผี ✅`
+    :`${guestName} โดนไล่ออกทั้งที่เป็นคน ❌`,
+    correct?'good':'bad');
   if(stars!==undefined)updateStars(stars);
   delete guestMap[guestId];
 });
 
-socket.on('guest_checkin',({guestId,guestName,roomId})=>{
+socket.on('guest_checkin',({guestName,roomId})=>{
   toast(`🏨 ${guestName} เช็คอินห้อง ${roomId}`,'info');
   addLog(`${guestName} เช็คอินห้อง ${roomId}`,'info');
 });
 
 socket.on('scan_result',({guestId,guestName,isGhost,scannerName,stars})=>{
-  if(isGhost){
-    toast(`✅ ${guestName} เป็นผี! ${scannerName} สแกนถูก`,'good');
-    addLog(`${scannerName} สแกน ${guestName} → ผี ✅`,'good');
-  } else {
-    toast(`⚠️ ${guestName} เป็นคน! เสีย 1 ดาว`,'bad');
-    addLog(`${scannerName} สแกน ${guestName} → คน ❌ เสีย 1 ดาว`,'bad');
-    if(stars!==undefined)updateStars(stars);
-  }
+  toast(isGhost
+    ?`✅ ${guestName} เป็นผี! สแกนถูก`
+    :`⚠️ ${guestName} เป็นคน! เสีย 1 ดาว`,
+    isGhost?'good':'bad');
+  addLog(`${scannerName} สแกน ${guestName} → ${isGhost?'ผี ✅':'คน ❌'}`,isGhost?'good':'bad');
+  if(stars!==undefined)updateStars(stars);
   delete guestMap[guestId];
+});
+
+socket.on('all_guests_resolved',()=>{
+  if(!votedEnd){
+    document.getElementById('resolved-banner').classList.add('show');
+    toast('✅ แขกทุกคนได้รับการตัดสินแล้ว — โหวตจบรอบได้!','good',5000);
+    if(currentTab!=='guests') bumpBadge('guests');
+  }
+});
+
+socket.on('task_joined',({taskId,joined,needed,playerName})=>{
+  toast(`${playerName} เข้าร่วมภารกิจ (${joined}/${needed})`,'info');
+  addLog(`${playerName} เข้าร่วมภารกิจ (${joined}/${needed})`,'info');
 });
 
 socket.on('task_complete',({taskName,timeBonus})=>{
   toast(`✅ ภารกิจ "${taskName}" สำเร็จ!${timeBonus>0?' +'+timeBonus+' วิ':''}`,'good');
   addLog(`ภารกิจ "${taskName}" สำเร็จ${timeBonus>0?' +'+timeBonus+' วิ':''}`,'good');
+  if(currentTab!=='tasks') bumpBadge('tasks');
 });
 
-socket.on('task_joined',({taskId,joined,needed,playerName})=>{
-  toast(`${playerName} เข้าร่วมภารกิจ (${joined}/${needed})`,'info');
+// FIX: task error handler
+socket.on('task_error',({msg})=>{
+  toast('⚠️ '+msg,'warn');
+  // re-request state to reset button states
+  socket.emit('get_state');
 });
 
 socket.on('clue_found',({roomId,text,source})=>{
-  clues.push({roomId,text,source:source||'room',round:0});
+  clues.push({roomId,text,source:source||'room'});
   renderClues();
   toast(`🔍 เบาะแสใหม่: ${text}`,'warn',5000);
   addLog(`[เบาะแส] ${text}`,'warn');
-  document.getElementById('clue-empty').style.display='none';
+  if(currentTab!=='clues') bumpBadge('clues');
 });
 
 socket.on('moved_to',({roomId})=>{
-  toast(`🚶 ย้ายไปห้อง ${roomId}`,'info',1800);
+  toast(`🚶 ย้ายไปห้อง ${roomId}`,'info',1500);
 });
 
 socket.on('vote_end_update',({votes,needed})=>{
-  updateVoteEnd({length:votes},{length:needed});
   const fill=document.getElementById('ve-fill');
   const txt=document.getElementById('ve-text');
   if(fill)fill.style.width=Math.min(100,Math.round(votes/needed*100))+'%';
@@ -692,16 +858,13 @@ socket.on('hotel_full',({guestName})=>{
   addLog(`โรงแรมเต็ม — ${guestName} ไม่ได้เข้าพัก`,'warn');
 });
 
-socket.on('log',({text,type})=>{
-  addLog(text,type||'');
+socket.on('log',({text,type})=>addLog(text,type||''));
+socket.on('player_left',({name})=>{toast(`${name} ออกจากเกม`,'warn');addLog(`${name} ออกจากเกม`,'warn');});
+
+socket.on('kick_result',({guestName,correct,kickerName})=>{
+  toast(correct?`✅ ${kickerName} ไล่ผี ${guestName} ออก!`:`❌ ${kickerName} ไล่ ${guestName} ออก — เป็นคน!`,correct?'good':'bad',4000);
 });
 
-socket.on('player_left',({name})=>{
-  toast(`${name} ออกจากเกม`,'warn');
-  addLog(`${name} ออกจากเกม`,'warn');
-});
-
-// ---- GAME OVER ----
 socket.on('game_over',({win,reasonText,stars,revealRooms,players,allGuests})=>{
   show('end-screen');
   const box=document.getElementById('end-box');
@@ -709,49 +872,40 @@ socket.on('game_over',({win,reasonText,stars,revealRooms,players,allGuests})=>{
   document.getElementById('end-icon').textContent=win?'🎉':'💀';
   document.getElementById('end-title').textContent=win?'ชนะแล้ว!':'แพ้แล้ว!';
   document.getElementById('end-desc').textContent=reasonText;
-  document.getElementById('final-stars').innerHTML='ดาวสุดท้าย: '+'⭐'.repeat(stars)+'☆'.repeat(5-stars);
+  document.getElementById('final-stars').innerHTML='ดาวสุดท้าย: '+'⭐'.repeat(Math.max(0,stars))+'☆'.repeat(Math.max(0,5-stars));
 
-  // reveal rooms
   const rr=document.getElementById('reveal-rooms');
-  rr.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">ห้องพัก</div>';
+  rr.innerHTML='<div class="reveal-section-title">ห้องพัก</div>';
   revealRooms.forEach(r=>{
-    const d=document.createElement('div');
-    d.className='rev-room';
-    d.innerHTML=`<span>${r.hasGhost?'👻':'🛏️'}</span>
-      <span>ห้อง ${r.id}</span>
-      <span style="color:var(--muted)">${r.guestName||'ว่าง'}</span>
-      <span class="ml-auto ${r.hasGhost?'rev-ghost':'rev-human'}" style="margin-left:auto">${r.hasGhost?'ผีพัก':'ปกติ'}</span>`;
+    const d=document.createElement('div');d.className='rev-item';
+    d.innerHTML=`<span>${r.hasGhost?'👻':'🛏️'}</span><span>ห้อง ${r.id}</span>
+      <span style="color:var(--muted);font-size:.78rem;">${r.guestName||'ว่าง'}</span>
+      <span class="${r.hasGhost?'rev-ghost':'rev-human'}" style="margin-left:auto">${r.hasGhost?'ผีพัก':'ปกติ'}</span>`;
     rr.appendChild(d);
   });
 
-  // reveal players
   const rp=document.getElementById('reveal-players');
-  rp.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">พนักงาน</div>';
+  rp.innerHTML='<div class="reveal-section-title">พนักงาน</div>';
   players.forEach(p=>{
-    const d=document.createElement('div');
-    d.className='rev-item';
-    d.innerHTML=`<span>${p.role==='ghost'?'👻':'👤'}</span>
-      <span>${p.name}</span>
+    const d=document.createElement('div');d.className='rev-item';
+    d.innerHTML=`<span>${p.role==='ghost'?'👻':'👤'}</span><span>${p.name}</span>
       ${p.isAI?'<span class="ai-tag">AI</span>':''}
       <span class="${p.role==='ghost'?'rev-ghost':'rev-human'}" style="margin-left:auto">${p.role==='ghost'?'ผี':'มนุษย์'}</span>`;
     rp.appendChild(d);
   });
 
-  // reveal guests
   const rg=document.getElementById('reveal-guests');
-  rg.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">แขก</div>';
+  rg.innerHTML='<div class="reveal-section-title">แขก</div>';
   allGuests.forEach(g=>{
-    const d=document.createElement('div');
-    d.className='rev-item';
-    d.innerHTML=`<span>${g.isGhost?'👻':'👤'}</span>
-      <span>${g.name}</span>
-      <span style="color:var(--muted);font-size:.75rem">${g.cardType}</span>
+    const d=document.createElement('div');d.className='rev-item';
+    d.innerHTML=`<span>${g.isGhost?'👻':'👤'}</span><span>${g.name}</span>
+      <span style="color:var(--muted);font-size:.76rem;">${g.cardType}</span>
       <span class="${g.isGhost?'rev-ghost':'rev-human'}" style="margin-left:auto">${g.isGhost?'ผี':'คน'}</span>`;
     rg.appendChild(d);
   });
 });
 
-socket.on('error_msg',(msg)=>{ toast('❌ '+msg,'bad'); });
+socket.on('error_msg',(msg)=>toast('❌ '+msg,'bad'));
 </script>
 </body>
 </html>
