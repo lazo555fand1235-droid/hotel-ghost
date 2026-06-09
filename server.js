@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const rooms = {};
 
 // ---- CONFIG ----
-const ROUND_TIME = 20;          // วินาทีต่อรอบ
+const ROUND_TIME = 30;          // วินาทีต่อรอบ
 const MAX_STARS = 5;
 const HOTEL_ROOMS = ['101','102','103','201','202','203','301','302']; // 8 ห้อง
 const MIN_PLAYERS = 1;
@@ -58,8 +58,16 @@ const TASKS = [
 ];
 
 function pickRandom(arr, n=1) {
+  if (!arr || arr.length === 0) return n === 1 ? null : [];
   const s = [...arr].sort(() => Math.random()-0.5);
-  return n===1 ? s[0] : s.slice(0,n);
+  // always return array when n>1, single item when n=1
+  return n === 1 ? s[0] : s.slice(0, n);
+}
+// safe spread — always returns array of strings, never spreads a bare string
+function pickRandomArr(arr, n) {
+  if (!arr || arr.length === 0 || n <= 0) return [];
+  const s = [...arr].sort(() => Math.random()-0.5);
+  return s.slice(0, n);
 }
 
 function generateGuest(isGhost) {
@@ -87,20 +95,19 @@ function generateGuest(isGhost) {
   // สร้าง clue 3 ข้อ — ผสม clue ให้ยากตัดสิน
   let clues = [];
   if (isGhost) {
-    // ผี: ghost clue 1-2 ข้อ + ambiguous 1-2 ข้อ ± human clue 1 ข้อ (หลอก)
     const numGhost = Math.random()<0.4 ? 1 : 2;
+    const numAmbig  = Math.max(0, 3 - numGhost - (Math.random()<0.35 ? 1 : 0));
     clues = [
-      ...pickRandom(GHOST_CLUES, numGhost),
-      ...pickRandom(AMBIGUOUS_CLUES, 3-numGhost-1),
-      ...(Math.random()<0.35 ? [pickRandom(HUMAN_CLUES)] : []),
-    ].slice(0,3);
+      ...pickRandomArr(GHOST_CLUES, numGhost),
+      ...pickRandomArr(AMBIGUOUS_CLUES, numAmbig),
+      ...(Math.random()<0.35 ? pickRandomArr(HUMAN_CLUES, 1) : []),
+    ].filter(Boolean).slice(0, 3);
   } else {
-    // คน: human clue 1-2 ข้อ + ambiguous 1-2 ข้อ (ทำให้สงสัย)
     const numHuman = Math.random()<0.3 ? 1 : 2;
     clues = [
-      ...pickRandom(HUMAN_CLUES, numHuman),
-      ...pickRandom(AMBIGUOUS_CLUES, 3-numHuman),
-    ].slice(0,3);
+      ...pickRandomArr(HUMAN_CLUES, numHuman),
+      ...pickRandomArr(AMBIGUOUS_CLUES, 3 - numHuman),
+    ].filter(Boolean).slice(0, 3);
   }
 
   return {
@@ -278,21 +285,18 @@ function tickRound(room) {
 }
 
 function endRound(room) {
-  // ผีที่เช็คอินแล้วแต่ไม่โดนจับ = เสียดาว
   const ghostsIn = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
-  if (ghostsIn > 0) {
-    room.stars = Math.max(0, room.stars - ghostsIn);
-    broadcastToRoom(room, 'round_end', {
-      round: room.round,
-      ghostsIn,
-      starsLost: ghostsIn,
-      stars: room.stars,
-    });
-  } else {
-    broadcastToRoom(room, 'round_end', { round: room.round, ghostsIn:0, starsLost:0, stars: room.stars });
-  }
 
-  // แขกที่พักเสร็จ (checkedIn) มีโอกาสทิ้งเบาะแส
+  // ไม่ลดดาวต่อรอบ — ผีในห้องไม่ทำให้เสียดาวทันที
+  // แพ้เฉพาะเมื่อผีเต็มทุกห้องหรือดาวหมดจากสาเหตุอื่น
+  broadcastToRoom(room, 'round_end', {
+    round: room.round,
+    ghostsIn,
+    starsLost: 0,
+    stars: room.stars,
+  });
+
+  // แขกคนที่พักเสร็จมีโอกาสทิ้งเบาะแส
   Object.values(room.hotelRooms).forEach(hr=>{
     if (hr.guest && hr.guest.checkedIn && !hr.hasGhost) {
       if (Math.random()<0.5) {
@@ -301,17 +305,15 @@ function endRound(room) {
         room.clues.push({ roomId:hr.id, text:clue, round:room.round });
         broadcastToRoom(room, 'clue_found', { roomId:hr.id, text:clue });
       }
-      // check-out แขก
       hr.guest = null;
-    } else if (hr.guest && hr.hasGhost) {
-      // ผียังอยู่ในห้อง
     }
+    // ผีในห้องยังคงอยู่ข้ามรอบ
   });
 
+  // เงื่อนไขแพ้: ดาวหมด
   if (room.stars <= 0) { endGame(room,'no_stars'); return; }
-  // เช็คว่าผีเต็มทุกห้องไหม
-  const totalOccupied = Object.values(room.hotelRooms).filter(r=>r.guest).length;
-  const ghostRooms    = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+  // เงื่อนไขแพ้: ผีเต็มทุกห้อง
+  const ghostRooms = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
   if (ghostRooms >= HOTEL_ROOMS.length) { endGame(room,'ghost_full'); return; }
 
   // รอบใหม่
