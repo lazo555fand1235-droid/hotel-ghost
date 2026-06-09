@@ -11,615 +11,670 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
 
-const HOTEL_TIME = 300;
-const SCAN_PENALTY = 30;
-const MIN_PLAYERS = 2; // ลดเป็น 2 เพื่อให้เล่นกับ AI ได้
-const MAX_AI = 3;
+// ---- CONFIG ----
+const ROUND_TIME = 20;          // วินาทีต่อรอบ
+const MAX_STARS = 5;
+const HOTEL_ROOMS = ['101','102','103','201','202','203','301','302']; // 8 ห้อง
+const MIN_PLAYERS = 1;
+const MAX_AI_STAFF = 3;
 
-const AI_NAMES = ['บอท ผี', 'บอท นก', 'บอท หมา', 'บอท แมว'];
+// ---- GUEST GENERATION ----
+const THAI_FIRST = ['สมชาย','วิภา','อนุชา','มาลี','ประสิทธิ์','ศิริพร','นคร','รัตนา','ไกรวุฒิ','จินตนา','พรทิพย์','สุรชัย'];
+const THAI_LAST  = ['ใจดี','มีสุข','ทองคำ','สว่างใจ','แก้วมณี','พลายงาม','รุ่งเรือง','ดาวเรือง'];
 
+// clue pool — human clues (เป็นจริง) vs ghost clues (ขัดแย้ง)
+const HUMAN_CLUES = [
+  'รองเท้ามีรอยสึกตามธรรมชาติ','ผิวหนังอุ่น สัมผัสได้ถึงชีพจร',
+  'หายใจสม่ำเสมอ เห็นไอน้ำในอากาศเย็น','ดวงตากระพริบตามปกติ',
+  'มีกลิ่นเหงื่อเล็กน้อย','เงาตกตามทิศที่ถูกต้อง',
+  'น้ำหนักกดพื้นเป็นเสียงก้อง','ผมมีไขมันตามธรรมชาติ',
+  'สีหน้าเปลี่ยนเมื่อถูกถาม','มีรอยช้ำเก่าที่แขน',
+];
+const GHOST_CLUES = [
+  'เงาหายไปช่วงสั้นๆ','อุณหภูมิรอบตัวเย็นกว่าปกติ 3°C',
+  'กระจกไม่สะท้อนใบหน้า','กลิ่นดอกไม้ที่ไม่มีแหล่งที่มา',
+  'เดินแต่ไม่มีเสียงเท้า','ดวงตาสะท้อนแสงในความมืด',
+  'รอยเท้าหยุดกลางทาง','ผิวเย็นเหมือนหินอ่อน',
+  'ปฏิทินในมือแสดงวันที่ผิด','หายใจแต่ไม่มีไอน้ำในอากาศเย็น',
+];
+const AMBIGUOUS_CLUES = [
+  'นิ่งผิดปกติเมื่อมีคนเข้ามาใกล้','ตอบคำถามช้ากว่าปกติเล็กน้อย',
+  'สีหน้าซีดกว่าคนทั่วไป','ไม่ค่อยสบตาเมื่อพูดคุย',
+  'ผ้าเสื้อไม่มีรอยยับแม้เดินทางมาไกล','รูปถ่ายในบัตรดูเก่ากว่าที่ควร',
+];
+
+const CARD_TYPES = ['ปกติ','เจาะรู','ไม่มีบัตร'];
+// ไม่มีบัตร = อาจเป็นคนจริงที่ลืม หรือผีก็ได้ — ทำให้ยาก
+
+const TASKS = [
+  { id:'seal',    name:'อุดรอยแตก',       desc:'ปิดรอยร้าวในผนัง H.{room} ก่อนผีเพิ่มขึ้น', rooms:1, timeBonus:0  },
+  { id:'ward',    name:'วางเครื่องรางห้อง', desc:'วางเครื่องรางป้องกันที่ห้อง H.{room}',      rooms:1, timeBonus:5  },
+  { id:'inspect', name:'ตรวจสอบห้อง',      desc:'ค้นห้อง H.{room} หาของผิดปกติ',             rooms:1, timeBonus:0  },
+  { id:'exorcise',name:'ขับผีห้อง',        desc:'ทำพิธีขับผีที่ห้อง H.{room} ต้องการ 2 คน', rooms:1, timeBonus:10, needPlayers:2 },
+  { id:'lockdown',name:'ล็อคชั้น',         desc:'ล็อคกุญแจชั้น {floor} ป้องกันผีขยาย',      rooms:2, timeBonus:5  },
+  { id:'ritual',  name:'พิธีกรรมกลุ่ม',    desc:'ทำพิธีกลางล็อบบี้ ต้องการ 3 คน',           rooms:0, timeBonus:15, needPlayers:3 },
+  { id:'review',  name:'ดูกล้องวงจรปิด',   desc:'ตรวจสอบกล้องหาผีในโรงแรม',                 rooms:0, timeBonus:0  },
+  { id:'purify',  name:'ชำระล้างห้อง',     desc:'ชำระล้างห้อง H.{room} ที่มีผีพัก',          rooms:1, timeBonus:8  },
+];
+
+function pickRandom(arr, n=1) {
+  const s = [...arr].sort(() => Math.random()-0.5);
+  return n===1 ? s[0] : s.slice(0,n);
+}
+
+function generateGuest(isGhost) {
+  const firstName = pickRandom(THAI_FIRST);
+  const lastName  = pickRandom(THAI_LAST);
+  const gender    = Math.random()<0.5 ? 'ชาย' : 'หญิง';
+  const height    = isGhost
+    ? (Math.random()<0.5 ? Math.floor(Math.random()*20+145) : Math.floor(Math.random()*20+185)) // สูงหรือเตี้ยผิดปกติ
+    : Math.floor(Math.random()*40+155); // 155-195
+  const weight    = isGhost
+    ? (Math.random()<0.5 ? Math.floor(Math.random()*15+35) : Math.floor(Math.random()*20+90))   // เบาหรือหนักผิดปกติ
+    : Math.floor(Math.random()*50+50);  // 50-100
+  const age       = isGhost ? Math.floor(Math.random()*80+20) : Math.floor(Math.random()*50+20);
+
+  // บัตรประชาชน — ผีมีโอกาสบัตรเจาะรู/ไม่มีบัตรสูงกว่า แต่ก็อาจมีบัตรปกติได้
+  let cardType;
+  if (isGhost) {
+    const r = Math.random();
+    cardType = r < 0.35 ? 'เจาะรู' : r < 0.6 ? 'ไม่มีบัตร' : 'ปกติ';
+  } else {
+    const r = Math.random();
+    cardType = r < 0.08 ? 'เจาะรู' : r < 0.2 ? 'ไม่มีบัตร' : 'ปกติ'; // คนปกติก็อาจลืมบัตรได้
+  }
+
+  // สร้าง clue 3 ข้อ — ผสม clue ให้ยากตัดสิน
+  let clues = [];
+  if (isGhost) {
+    // ผี: ghost clue 1-2 ข้อ + ambiguous 1-2 ข้อ ± human clue 1 ข้อ (หลอก)
+    const numGhost = Math.random()<0.4 ? 1 : 2;
+    clues = [
+      ...pickRandom(GHOST_CLUES, numGhost),
+      ...pickRandom(AMBIGUOUS_CLUES, 3-numGhost-1),
+      ...(Math.random()<0.35 ? [pickRandom(HUMAN_CLUES)] : []),
+    ].slice(0,3);
+  } else {
+    // คน: human clue 1-2 ข้อ + ambiguous 1-2 ข้อ (ทำให้สงสัย)
+    const numHuman = Math.random()<0.3 ? 1 : 2;
+    clues = [
+      ...pickRandom(HUMAN_CLUES, numHuman),
+      ...pickRandom(AMBIGUOUS_CLUES, 3-numHuman),
+    ].slice(0,3);
+  }
+
+  return {
+    id: 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    name: `${firstName} ${lastName}`,
+    gender,
+    height,
+    weight,
+    age,
+    cardType,
+    clues,
+    isGhost,
+    checkedIn: false,
+    assignedRoom: null,
+    votes: { accept:0, reject:0, voters:[] },
+    voteActive: false,
+    voteTimeout: null,
+  };
+}
+
+function generateTask(room) {
+  const base = pickRandom(TASKS);
+  const task = { ...base, id: base.id+'_'+Date.now() };
+  const floors = ['1','2','3'];
+  task.desc = task.desc
+    .replace('{room}', pickRandom(HOTEL_ROOMS))
+    .replace('{floor}', pickRandom(floors));
+  task.completed = false;
+  task.progress = {};  // playerId -> bool (เข้าร่วมแล้ว)
+  return task;
+}
+
+// ---- ROOM ----
 function createRoom(roomId) {
   return {
     id: roomId,
-    players: {},
+    players: {},      // socketId -> playerObj
     phase: 'lobby',
-    hotelTime: HOTEL_TIME,
-    timerInterval: null,
-    guests: [],
-    guestInterval: null,
-    pictionary: null,
-    voteCount: 0,
+    stars: MAX_STARS,
+    round: 0,
+    roundTime: ROUND_TIME,
+    roundInterval: null,
+    hotelRooms: initHotelRooms(),
+    guestQueue: [],   // แขกรอเช็คอิน
+    tasks: [],
+    clues: [],        // clue ที่ผู้เล่นค้นพบ
     aiIntervals: [],
+    voteEndActive: false,
+    voteEnd: {},      // playerId -> bool
+    ghostStaff: [],   // AI พนักงานที่เป็นผี
   };
 }
 
-function assignRoles(room) {
-  const ids = Object.keys(room.players);
-  const ghostCount = Math.max(1, Math.floor(ids.length * 0.3));
-  const shuffled = ids.sort(() => Math.random() - 0.5);
-  shuffled.forEach((id, i) => {
-    room.players[id].role = i < ghostCount ? 'ghost' : 'human';
-    room.players[id].roleRevealed = false;
+function initHotelRooms() {
+  const r = {};
+  HOTEL_ROOMS.forEach(id => {
+    r[id] = { id, guest: null, hasGhost: false, clueLeft: null };
   });
+  return r;
 }
 
-// ---- AI ----
-function addAIPlayers(room) {
-  const humanCount = Object.keys(room.players).length;
-  const needed = Math.max(0, MIN_PLAYERS + 1 - humanCount); // เติมให้ครบ MIN+1
-  const toAdd = Math.min(needed, MAX_AI);
-  for (let i = 0; i < toAdd; i++) {
-    const aiId = 'ai_' + Date.now() + '_' + i;
-    room.players[aiId] = {
-      name: AI_NAMES[i % AI_NAMES.length],
-      role: null,
-      roleRevealed: false,
-      isHost: false,
+// ---- STAFF (AI) ----
+const AI_STAFF_NAMES = ['คุณบัว','คุณนก','คุณเอิน','คุณต้น'];
+function addAIStaff(room) {
+  for (let i=0; i<2; i++) {
+    const aid = 'ai_'+i;
+    const isGhost = i===0 && Math.random()<0.3; // บางครั้ง AI เป็นผี
+    room.players[aid] = {
+      name: AI_STAFF_NAMES[i],
       isAI: true,
-      suspicion: {}, // targetId -> suspicion score
-      scanCooldown: 0,
+      isHost: false,
+      role: isGhost ? 'ghost' : 'human',
+      currentRoom: 'lobby',
+      taskProgress: {},
     };
+    if (isGhost) room.ghostStaff.push(aid);
   }
 }
 
-function runAIHotel(room) {
-  Object.entries(room.players).forEach(([aiId, ai]) => {
-    if (!ai.isAI) return;
-
-    const interval = setInterval(() => {
-      if (room.phase !== 'hotel') { clearInterval(interval); return; }
-
-      ai.scanCooldown = (ai.scanCooldown || 0) - 1;
-
-      if (ai.role === 'human') {
-        aiHumanBehavior(room, aiId, ai);
-      } else {
-        aiGhostBehavior(room, aiId, ai);
-      }
-    }, 3000 + Math.random() * 4000); // tick ทุก 3-7 วิ
-
-    room.aiIntervals.push(interval);
-  });
-}
-
-function aiHumanBehavior(room, aiId, ai) {
-  if (ai.scanCooldown > 0) return;
-
-  // สแกนแขกที่รอนานหน้าสุด (น่าสงสัย)
-  const pendingGuests = room.guests.filter(g => !g.checkedIn);
-  if (pendingGuests.length > 0 && Math.random() < 0.6) {
-    // เลือกแขกที่อยู่นานที่สุด (index แรก = มาก่อน)
-    const target = pendingGuests[0];
-    performAIScanGuest(room, aiId, ai, target.id);
-    ai.scanCooldown = 3;
-    return;
-  }
-
-  // สแกนผู้เล่นที่ไม่เคยสแกนเลย (น่าสงสัยว่าเป็นผี)
-  const otherPlayers = Object.entries(room.players).filter(([id, p]) =>
-    id !== aiId && !p.isAI && p.role !== undefined
-  );
-
-  if (otherPlayers.length > 0 && Math.random() < 0.2) {
-    // เลือกคนที่มี suspicion สูงสุด
-    const sorted = otherPlayers.sort(([idA], [idB]) =>
-      (ai.suspicion[idB] || 0) - (ai.suspicion[idA] || 0)
-    );
-    const [targetId] = sorted[0];
-    performAIScanPlayer(room, aiId, ai, targetId);
-    ai.scanCooldown = 5;
-    return;
-  }
-
-  // โหวตจบเมื่อเวลาน้อยกว่า 60 วิ และไม่มีแขกผีเหลือ
-  const ghostGuests = room.guests.filter(g => g.isGhost && g.checkedIn).length;
-  if (room.hotelTime < 60 && ghostGuests === 0 && Math.random() < 0.4) {
-    performAIVote(room, aiId);
-  }
-}
-
-function aiGhostBehavior(room, aiId, ai) {
-  // ผี — แกล้งทำเป็นสแกนแขกบ้างเพื่อไม่ให้น่าสงสัย แต่สแกนแบบสุ่ม
-  const pendingGuests = room.guests.filter(g => !g.checkedIn);
-  if (pendingGuests.length > 0 && Math.random() < 0.15) {
-    // สแกนแบบสุ่ม (ไม่똑똑 — อาจสแกนผิดเสียเวลา)
-    const target = pendingGuests[Math.floor(Math.random() * pendingGuests.length)];
-    performAIScanGuest(room, aiId, ai, target.id);
-    ai.scanCooldown = 8;
-  }
-
-  // ไม่โหวตจบ (ต้องการให้เวลาหมด)
-}
-
-function performAIScanGuest(room, aiId, ai, guestId) {
-  const guest = room.guests.find(g => g.id === guestId);
-  if (!guest || guest.checkedIn) return;
-
-  const scannerName = room.players[aiId]?.name || 'AI';
-
-  if (guest.isGhost) {
-    room.guests = room.guests.filter(g => g.id !== guestId);
-    broadcastToRoom(room, 'guest_scanned', {
-      guestId,
-      guestName: guest.name,
-      isGhost: true,
-      scannerName,
-    });
-  } else {
-    room.hotelTime = Math.max(0, room.hotelTime - SCAN_PENALTY);
-    broadcastToRoom(room, 'guest_scanned', {
-      guestId,
-      guestName: guest.name,
-      isGhost: false,
-      penalty: SCAN_PENALTY,
-      scannerName,
-      hotelTime: room.hotelTime,
-    });
-    if (room.hotelTime <= 0) endGame(room, 'timeout');
-  }
-}
-
-function performAIScanPlayer(room, aiId, ai, targetId) {
-  const target = room.players[targetId];
-  if (!target) return;
-  const scannerName = room.players[aiId]?.name || 'AI';
-
-  if (target.role === 'ghost') {
-    delete room.players[targetId];
-    broadcastToRoom(room, 'player_scanned', {
-      targetName: target.name,
-      isGhost: true,
-      scannerName,
-    });
-    // เพิ่ม suspicion ให้คนอื่น
-    Object.keys(room.players).forEach(id => {
-      if (room.players[id]?.isAI && room.players[id].suspicion) {
-        room.players[id].suspicion[targetId] = 0;
-      }
-    });
-  } else {
-    room.hotelTime = Math.max(0, room.hotelTime - SCAN_PENALTY);
-    // สแกนผิด เพิ่ม suspicion ให้ตัวเอง (AI อื่นจะหลีกเลี่ยง)
-    Object.keys(room.players).forEach(id => {
-      if (room.players[id]?.isAI && room.players[id].suspicion) {
-        room.players[id].suspicion[targetId] = (room.players[id].suspicion[targetId] || 0) - 2;
-      }
-    });
-    broadcastToRoom(room, 'player_scanned', {
-      targetName: target.name,
-      isGhost: false,
-      penalty: SCAN_PENALTY,
-      scannerName,
-      hotelTime: room.hotelTime,
-    });
-    if (room.hotelTime <= 0) endGame(room, 'timeout');
-  }
-}
-
-function performAIVote(room, aiId) {
-  room.voteCount++;
-  const total = Object.keys(room.players).length;
-  broadcastToRoom(room, 'vote_update', {
-    votes: room.voteCount,
-    needed: Math.ceil(total / 2),
-  });
-  if (room.voteCount >= Math.ceil(total / 2)) {
-    endGame(room, 'vote');
-  }
-}
-
-// AI ทำ pictionary อัตโนมัติ (ส่ง canvas ว่างๆ / เดาคำ)
-function handleAIPictionary(room) {
-  const p = room.pictionary;
-  const ids = Object.keys(room.players);
-  const currentId = ids[p.currentIndex];
-  const ai = room.players[currentId];
-  if (!ai?.isAI) return;
-
-  const delay = 1500 + Math.random() * 2000;
-
-  if (p.phase === 'draw' || (p.currentIndex === 0)) {
-    setTimeout(() => {
-      if (room.phase !== 'pictionary') return;
-      if (ids[p.currentIndex] !== currentId) return;
-      // ส่ง canvas ว่างๆ
-      if (p.interval) clearInterval(p.interval);
-      p.chain[p.currentIndex] = { playerId: currentId, type: 'draw', data: createBlankCanvas() };
-      advancePictionary(room);
-    }, delay);
-  } else {
-    setTimeout(() => {
-      if (room.phase !== 'pictionary') return;
-      if (ids[p.currentIndex] !== currentId) return;
-      if (p.interval) clearInterval(p.interval);
-      // เดาคำ — บางครั้งเดาถูก บางครั้งผิด
-      const correct = Math.random() < 0.3;
-      p.chain[p.currentIndex] = {
-        playerId: currentId,
-        type: 'guess',
-        data: correct ? p.originalWord : 'ไม่รู้',
-      };
-      advancePictionary(room);
-    }, delay);
-  }
-}
-
-function createBlankCanvas() {
-  // base64 PNG ขาว 1x1 pixel แทน canvas จริง
-  return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
-}
-
-// ---- PICTIONARY ----
-function startPictionary(room) {
-  room.phase = 'pictionary';
-  const ids = Object.keys(room.players);
-  const words = ['แมว','บ้าน','ต้นไม้','รถยนต์','ดาว','ปลา','เครื่องบิน','ช้าง','ดอกไม้','พิซซ่า'];
-  const word = words[Math.floor(Math.random() * words.length)];
-
-  room.pictionary = {
-    chain: ids.map(id => ({ playerId: id, type: null, data: null })),
-    currentIndex: 0,
-    word,
-    originalWord: word,
-    phase: 'draw',
-    timeLeft: 5,
-    interval: null,
-  };
-
-  const firstId = ids[0];
-
-  broadcastToRoom(room, 'pictionary_start', {
-    totalPlayers: ids.length,
-    currentPlayer: room.players[firstId].name,
-  });
-
-  if (room.players[firstId]?.isAI) {
-    handleAIPictionary(room);
-  } else {
-    io.to(firstId).emit('pictionary_turn', {
-      type: 'draw',
-      prompt: word,
-      timeLeft: 5,
-      turnIndex: 0,
-      total: ids.length,
-    });
-    startPictionaryTimer(room);
-  }
-}
-
-function startPictionaryTimer(room) {
-  const p = room.pictionary;
-  if (p.interval) clearInterval(p.interval);
-  p.timeLeft = p.phase === 'draw' ? 5 : 3;
-
-  p.interval = setInterval(() => {
-    p.timeLeft--;
-    broadcastToRoom(room, 'pictionary_timer', { timeLeft: p.timeLeft });
-    if (p.timeLeft <= 0) {
-      clearInterval(p.interval);
-      advancePictionary(room);
-    }
-  }, 1000);
-}
-
-function advancePictionary(room) {
-  const p = room.pictionary;
-  const ids = Object.keys(room.players);
-  p.currentIndex++;
-
-  if (p.currentIndex >= ids.length) {
-    const lastId = ids[ids.length - 1];
-    const lastPlayer = room.players[lastId];
-
-    if (lastPlayer?.isAI) {
-      // AI เดาคำสุดท้าย
-      setTimeout(() => {
-        const correct = Math.random() < 0.3;
-        finalizePictionary(room, correct ? p.originalWord : 'ไม่รู้');
-      }, 2000);
-    } else {
-      io.to(lastId).emit('pictionary_final_guess', {
-        image: p.chain[ids.length - 1].data,
-      });
-      broadcastToRoom(room, 'pictionary_waiting_guess', {
-        guesser: lastPlayer.name,
-      });
-    }
-    return;
-  }
-
-  const currentId = ids[p.currentIndex];
-  const prevEntry = p.chain[p.currentIndex - 1];
-
-  if (prevEntry.type === 'draw') {
-    p.phase = 'guess';
-  } else {
-    p.phase = 'draw';
-  }
-
-  if (room.players[currentId]?.isAI) {
-    handleAIPictionary(room);
-  } else {
-    if (prevEntry.type === 'draw') {
-      io.to(currentId).emit('pictionary_turn', {
-        type: 'guess',
-        image: prevEntry.data,
-        timeLeft: 3,
-        turnIndex: p.currentIndex,
-        total: ids.length,
-      });
-    } else {
-      io.to(currentId).emit('pictionary_turn', {
-        type: 'draw',
-        prompt: prevEntry.data,
-        timeLeft: 5,
-        turnIndex: p.currentIndex,
-        total: ids.length,
-      });
-    }
-    startPictionaryTimer(room);
-  }
-}
-
-function finalizePictionary(room, guess) {
-  const p = room.pictionary;
-  const correct = guess.trim() === p.originalWord;
-
+// ---- BROADCAST ----
+function broadcastToRoom(room, event, data) {
   Object.keys(room.players).forEach(id => {
-    room.players[id].roleRevealed = true;
-    if (!room.players[id].isAI) {
-      io.to(id).emit('role_revealed', {
-        role: room.players[id].role,
-        correct,
-        originalWord: p.originalWord,
-        guess,
-      });
-    }
+    if (!room.players[id]?.isAI) io.to(id).emit(event, data);
   });
-
-  setTimeout(() => startHotelPhase(room), 3000);
 }
-
-function startHotelPhase(room) {
-  room.phase = 'hotel';
-  room.hotelTime = HOTEL_TIME;
-
-  broadcastToRoom(room, 'hotel_start', {
-    hotelTime: HOTEL_TIME,
+function broadcastState(room) {
+  broadcastToRoom(room, 'state_update', buildState(room));
+}
+function buildState(room) {
+  return {
+    phase: room.phase,
+    stars: room.stars,
+    round: room.round,
+    roundTime: room.roundTime,
+    hotelRooms: Object.values(room.hotelRooms).map(r => ({
+      id: r.id,
+      occupied: !!r.guest,
+      guestName: r.guest?.name || null,
+      hasGhost: false, // ไม่เปิดเผยให้ client
+      clueLeft: r.clueLeft,
+    })),
+    guestQueue: room.guestQueue.map(g => sanitizeGuest(g)),
+    tasks: room.tasks,
+    clues: room.clues,
     players: sanitizePlayers(room),
-  });
-
-  room.guestInterval = setInterval(() => spawnGuest(room), 20000);
-
-  room.timerInterval = setInterval(() => {
-    room.hotelTime--;
-    broadcastToRoom(room, 'hotel_timer', { hotelTime: room.hotelTime });
-    if (room.hotelTime <= 0) endGame(room, 'timeout');
-  }, 1000);
-
-  setTimeout(() => spawnGuest(room), 3000);
-
-  // เริ่ม AI behavior
-  runAIHotel(room);
-}
-
-function spawnGuest(room) {
-  if (room.phase !== 'hotel') return;
-  const isGhost = Math.random() < 0.4;
-  const names = ['นาย A','นาง B','เด็กชาย C','คุณ D','ท่าน E','ลุง F','ป้า G'];
-  const guest = {
-    id: 'guest_' + Date.now(),
-    name: names[Math.floor(Math.random() * names.length)],
-    isGhost,
-    checkedIn: false,
+    voteEnd: room.voteEnd,
+    voteEndActive: room.voteEndActive,
   };
-  room.guests.push(guest);
-  broadcastToRoom(room, 'guest_arrived', { guestId: guest.id, guestName: guest.name });
 }
-
+function sanitizeGuest(g) {
+  return {
+    id: g.id,
+    name: g.name,
+    gender: g.gender,
+    height: g.height,
+    weight: g.weight,
+    age: g.age,
+    cardType: g.cardType,
+    clues: g.clues,
+    checkedIn: g.checkedIn,
+    assignedRoom: g.assignedRoom,
+    votes: g.votes,
+    voteActive: g.voteActive,
+    // isGhost ไม่ส่ง!
+  };
+}
 function sanitizePlayers(room) {
-  return Object.entries(room.players).map(([id, p]) => ({
-    id,
-    name: p.name,
-    role: p.roleRevealed ? p.role : 'unknown',
-    roleRevealed: p.roleRevealed,
-    isAI: p.isAI || false,
+  return Object.entries(room.players).map(([id,p])=>({
+    id, name:p.name, isAI:p.isAI||false, isHost:p.isHost||false,
+    role: p.role, // จะ reveal เฉพาะตอนเกมจบ
+    currentRoom: p.currentRoom||'lobby',
   }));
 }
 
-function broadcastToRoom(room, event, data) {
-  Object.keys(room.players).forEach(id => {
-    if (!room.players[id]?.isAI) {
-      io.to(id).emit(event, data);
-    }
+// ---- ROUND ----
+function startRound(room) {
+  room.round++;
+  room.roundTime = ROUND_TIME;
+  room.tasks = [generateTask(room), generateTask(room)]; // 2 ภารกิจต่อรอบ
+  room.guestQueue = [];
+
+  // spawn แขก 2-4 คน
+  const n = 2 + Math.floor(Math.random()*3);
+  for (let i=0;i<n;i++) {
+    const isGhost = Math.random()<0.35;
+    room.guestQueue.push(generateGuest(isGhost));
+  }
+
+  // แขกแรกเปิดให้โหวตทันที
+  if (room.guestQueue.length>0) openGuestVote(room, room.guestQueue[0]);
+
+  broadcastToRoom(room, 'round_start', {
+    round: room.round,
+    tasks: room.tasks,
+    guestCount: room.guestQueue.length,
   });
+  broadcastState(room);
+
+  if (room.roundInterval) clearInterval(room.roundInterval);
+  room.roundInterval = setInterval(()=>tickRound(room), 1000);
+
+  // AI behavior
+  runAI(room);
 }
 
-function endGame(room, reason) {
-  if (room.timerInterval) clearInterval(room.timerInterval);
-  if (room.guestInterval) clearInterval(room.guestInterval);
-  if (room.pictionary?.interval) clearInterval(room.pictionary.interval);
-  room.aiIntervals.forEach(iv => clearInterval(iv));
-  room.aiIntervals = [];
-  room.phase = 'ended';
+function tickRound(room) {
+  if (room.phase !== 'playing') { clearInterval(room.roundInterval); return; }
+  room.roundTime--;
+  broadcastToRoom(room, 'round_timer', { roundTime: room.roundTime });
 
-  const ghostsRemaining = room.guests.filter(g => g.isGhost && g.checkedIn).length;
-  const ghostStaff = Object.values(room.players).filter(p => p.role === 'ghost').length;
-  const totalGhosts = ghostsRemaining + ghostStaff;
-  const win = totalGhosts === 0 && reason === 'vote';
-
-  broadcastToRoom(room, 'game_over', {
-    win,
-    reason,
-    totalGhosts,
-    players: Object.values(room.players).map(p => ({ name: p.name, role: p.role, isAI: p.isAI || false })),
-    guests: room.guests.map(g => ({ name: g.name, isGhost: g.isGhost, checkedIn: g.checkedIn })),
-  });
+  if (room.roundTime <= 0) {
+    clearInterval(room.roundInterval);
+    endRound(room);
+  }
 }
 
-// ---- Socket.io ----
-io.on('connection', (socket) => {
-  socket.on('join_room', ({ roomId, playerName }) => {
-    if (!rooms[roomId]) rooms[roomId] = createRoom(roomId);
-    const room = rooms[roomId];
-
-    if (room.phase !== 'lobby') { socket.emit('error_msg', 'เกมเริ่มแล้ว'); return; }
-
-    room.players[socket.id] = {
-      name: playerName,
-      role: null,
-      roleRevealed: false,
-      isHost: Object.keys(room.players).length === 0,
-      isAI: false,
-    };
-
-    socket.join(roomId);
-    socket.roomId = roomId;
-
-    broadcastToRoom(room, 'lobby_update', {
-      players: Object.values(room.players).map(p => ({ name: p.name, isHost: p.isHost, isAI: p.isAI || false })),
-      count: Object.keys(room.players).length,
-      minPlayers: MIN_PLAYERS,
+function endRound(room) {
+  // ผีที่เช็คอินแล้วแต่ไม่โดนจับ = เสียดาว
+  const ghostsIn = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+  if (ghostsIn > 0) {
+    room.stars = Math.max(0, room.stars - ghostsIn);
+    broadcastToRoom(room, 'round_end', {
+      round: room.round,
+      ghostsIn,
+      starsLost: ghostsIn,
+      stars: room.stars,
     });
-  });
+  } else {
+    broadcastToRoom(room, 'round_end', { round: room.round, ghostsIn:0, starsLost:0, stars: room.stars });
+  }
 
-  socket.on('add_ai', () => {
-    const room = rooms[socket.roomId];
-    if (!room || room.phase !== 'lobby') return;
-    if (!room.players[socket.id]?.isHost) return;
-    const currentAI = Object.values(room.players).filter(p => p.isAI).length;
-    if (currentAI >= MAX_AI) { socket.emit('error_msg', 'เพิ่ม AI ได้สูงสุด 3 ตัว'); return; }
-
-    const aiId = 'ai_' + Date.now();
-    const aiIndex = currentAI;
-    room.players[aiId] = {
-      name: AI_NAMES[aiIndex % AI_NAMES.length],
-      role: null,
-      roleRevealed: false,
-      isHost: false,
-      isAI: true,
-      suspicion: {},
-      scanCooldown: 0,
-    };
-
-    broadcastToRoom(room, 'lobby_update', {
-      players: Object.values(room.players).map(p => ({ name: p.name, isHost: p.isHost, isAI: p.isAI || false })),
-      count: Object.keys(room.players).length,
-      minPlayers: MIN_PLAYERS,
-    });
-  });
-
-  socket.on('start_game', () => {
-    const room = rooms[socket.roomId];
-    if (!room) return;
-    if (!room.players[socket.id]?.isHost) return;
-    if (Object.keys(room.players).length < MIN_PLAYERS) {
-      socket.emit('error_msg', `ต้องการผู้เล่นอย่างน้อย ${MIN_PLAYERS} คน`);
-      return;
+  // แขกที่พักเสร็จ (checkedIn) มีโอกาสทิ้งเบาะแส
+  Object.values(room.hotelRooms).forEach(hr=>{
+    if (hr.guest && hr.guest.checkedIn && !hr.hasGhost) {
+      if (Math.random()<0.5) {
+        const clue = generateRoomClue(room);
+        hr.clueLeft = clue;
+        room.clues.push({ roomId:hr.id, text:clue, round:room.round });
+        broadcastToRoom(room, 'clue_found', { roomId:hr.id, text:clue });
+      }
+      // check-out แขก
+      hr.guest = null;
+    } else if (hr.guest && hr.hasGhost) {
+      // ผียังอยู่ในห้อง
     }
-    assignRoles(room);
-    startPictionary(room);
   });
 
-  socket.on('pictionary_submit', ({ type, data }) => {
-    const room = rooms[socket.roomId];
-    if (!room || room.phase !== 'pictionary') return;
-    const p = room.pictionary;
-    const ids = Object.keys(room.players);
-    if (ids[p.currentIndex] !== socket.id) return;
-    if (p.interval) clearInterval(p.interval);
-    p.chain[p.currentIndex] = { playerId: socket.id, type, data };
-    advancePictionary(room);
-  });
+  if (room.stars <= 0) { endGame(room,'no_stars'); return; }
+  // เช็คว่าผีเต็มทุกห้องไหม
+  const totalOccupied = Object.values(room.hotelRooms).filter(r=>r.guest).length;
+  const ghostRooms    = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+  if (ghostRooms >= HOTEL_ROOMS.length) { endGame(room,'ghost_full'); return; }
 
-  socket.on('pictionary_guess', ({ guess }) => {
-    const room = rooms[socket.roomId];
-    if (!room) return;
-    finalizePictionary(room, guess);
-  });
+  // รอบใหม่
+  setTimeout(()=>startRound(room), 3000);
+}
 
-  socket.on('scan_guest', ({ guestId }) => {
-    const room = rooms[socket.roomId];
-    if (!room || room.phase !== 'hotel') return;
-    const guest = room.guests.find(g => g.id === guestId);
-    if (!guest) return;
+function generateRoomClue(room) {
+  const ghostRooms = Object.entries(room.hotelRooms).filter(([,r])=>r.hasGhost).map(([id])=>id);
+  const pool = [];
+  if (ghostRooms.length>0) {
+    pool.push(`ได้ยินเสียงแปลกๆ จากบริเวณชั้น ${ghostRooms[0][0]}`);
+    pool.push(`อุณหภูมิต่างกันมากระหว่างห้อง ${ghostRooms[0]} กับห้องข้างเคียง`);
+    pool.push(`พบรอยขีดข่วนที่ผนังห้อง ${ghostRooms[0]}`);
+    pool.push(`กลิ่นดอกไม้แรงผิดปกติแถวๆ ห้อง ${ghostRooms[0]}`);
+  }
+  pool.push('ไม่พบสิ่งผิดปกติในห้อง');
+  pool.push('แขกรายนี้ดูปกติดีตลอดการพัก');
+  pool.push('พบรูปถ่ายเก่าๆ ทิ้งไว้ในห้อง ไม่รู้เจ้าของ');
+  pool.push('กระจกในห้องมีรอยฝ้าแปลกๆ');
+  return pickRandom(pool);
+}
 
+// ---- GUEST VOTE ----
+function openGuestVote(room, guest) {
+  guest.voteActive = true;
+  guest.votes = { accept:0, reject:0, voters:[] };
+  broadcastToRoom(room, 'guest_vote_open', { guest: sanitizeGuest(guest) });
+
+  // 15 วิถ้าไม่มีใครโหวต = รับเข้าอัตโนมัติ
+  guest.voteTimeout = setTimeout(()=>{
+    if (!guest.voteActive) return;
+    resolveGuestVote(room, guest, 'timeout');
+  }, 15000);
+
+  // AI โหวต
+  setTimeout(()=>aiVoteGuest(room, guest), 2000+Math.random()*5000);
+}
+
+function resolveGuestVote(room, guest, reason) {
+  if (!guest.voteActive) return;
+  clearTimeout(guest.voteTimeout);
+  guest.voteActive = false;
+
+  const total = guest.votes.accept + guest.votes.reject;
+  const accepted = total===0 || guest.votes.accept >= guest.votes.reject;
+
+  if (accepted) {
+    checkInGuest(room, guest);
+  } else {
+    // โหวตไล่ออก
     if (guest.isGhost) {
-      room.guests = room.guests.filter(g => g.id !== guestId);
-      broadcastToRoom(room, 'guest_scanned', {
-        guestId, guestName: guest.name, isGhost: true,
-        scannerName: room.players[socket.id]?.name,
-      });
+      broadcastToRoom(room, 'guest_rejected', { guestId:guest.id, guestName:guest.name, correct:true });
+      addLog(room, `✅ ${guest.name} โดนโหวตไล่ออก — เป็นผีจริง!`, 'good');
     } else {
-      room.hotelTime = Math.max(0, room.hotelTime - SCAN_PENALTY);
-      broadcastToRoom(room, 'guest_scanned', {
-        guestId, guestName: guest.name, isGhost: false,
-        penalty: SCAN_PENALTY, scannerName: room.players[socket.id]?.name,
-        hotelTime: room.hotelTime,
-      });
-      if (room.hotelTime <= 0) endGame(room, 'timeout');
+      room.stars = Math.max(0, room.stars-1);
+      broadcastToRoom(room, 'guest_rejected', { guestId:guest.id, guestName:guest.name, correct:false, stars:room.stars });
+      addLog(room, `❌ ${guest.name} โดนไล่ออกทั้งที่เป็นคน เสีย 1 ดาว`, 'bad');
     }
+    room.guestQueue = room.guestQueue.filter(g=>g.id!==guest.id);
+  }
+
+  // เปิดโหวตแขกคนต่อไป
+  const next = room.guestQueue.find(g=>!g.checkedIn && !g.voteActive && !g.voteTimeout);
+  if (next) setTimeout(()=>openGuestVote(room,next), 2000);
+
+  broadcastState(room);
+}
+
+function checkInGuest(room, guest) {
+  // หาห้องว่าง
+  const emptyRoom = Object.values(room.hotelRooms).find(r=>!r.guest);
+  if (!emptyRoom) {
+    // โรงแรมเต็ม
+    broadcastToRoom(room, 'hotel_full', { guestName:guest.name });
+    return;
+  }
+  guest.checkedIn = true;
+  guest.assignedRoom = emptyRoom.id;
+  emptyRoom.guest = guest;
+  emptyRoom.hasGhost = guest.isGhost;
+
+  broadcastToRoom(room, 'guest_checkin', {
+    guestId: guest.id,
+    guestName: guest.name,
+    roomId: emptyRoom.id,
+    isGhost: false, // ไม่บอก client
   });
+  addLog(room, `🏨 ${guest.name} เช็คอินห้อง ${emptyRoom.id}`, 'info');
 
-  socket.on('scan_player', ({ targetId }) => {
-    const room = rooms[socket.roomId];
-    if (!room || room.phase !== 'hotel') return;
-    if (targetId === socket.id) return;
-    const target = room.players[targetId];
-    if (!target) return;
+  // ผีเต็มทุกห้อง?
+  const ghostRooms = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+  if (ghostRooms >= HOTEL_ROOMS.length) endGame(room,'ghost_full');
+  broadcastState(room);
+}
 
-    if (target.role === 'ghost') {
-      delete room.players[targetId];
-      io.to(targetId).emit('you_were_caught');
-      broadcastToRoom(room, 'player_scanned', {
-        targetName: target.name, isGhost: true,
-        scannerName: room.players[socket.id]?.name,
-      });
+function addLog(room, text, type='') {
+  broadcastToRoom(room, 'log', { text, type });
+}
+
+// ---- TASKS ----
+function joinTask(room, playerId, taskId) {
+  const task = room.tasks.find(t=>t.id===taskId);
+  if (!task || task.completed) return;
+  task.progress[playerId] = true;
+  const needed = task.needPlayers || 1;
+  const joined = Object.keys(task.progress).length;
+  if (joined >= needed) {
+    task.completed = true;
+    if (task.timeBonus>0) room.roundTime = Math.min(ROUND_TIME*2, room.roundTime+task.timeBonus);
+    broadcastToRoom(room, 'task_complete', { taskId, taskName:task.name, timeBonus:task.timeBonus });
+    addLog(room, `✅ ภารกิจ "${task.name}" สำเร็จ!${task.timeBonus>0?' +'+task.timeBonus+' วิ':''}`, 'good');
+
+    // ถ้าเป็น inspect/review/purify — ได้เบาะแส
+    if (['inspect','review','purify'].includes(task.id.split('_')[0])) {
+      const clue = generateRoomClue(room);
+      room.clues.push({ text:clue, round:room.round, source:'task' });
+      broadcastToRoom(room, 'clue_found', { text:clue, source:'task' });
+    }
+    broadcastState(room);
+  } else {
+    broadcastToRoom(room, 'task_joined', { taskId, joined, needed, playerName: room.players[playerId]?.name });
+    broadcastState(room);
+  }
+}
+
+// ---- SCAN GUEST (by player, แทนโหวต) ----
+function scanGuest(room, socketId, guestId) {
+  const guest = room.guestQueue.find(g=>g.id===guestId) ||
+    Object.values(room.hotelRooms).find(r=>r.guest?.id===guestId)?.guest;
+  if (!guest) return;
+  const scanner = room.players[socketId]?.name || 'พนักงาน';
+  if (guest.isGhost) {
+    // ไล่ออก
+    if (guest.checkedIn && guest.assignedRoom) {
+      const hr = room.hotelRooms[guest.assignedRoom];
+      hr.guest = null; hr.hasGhost = false;
+    }
+    room.guestQueue = room.guestQueue.filter(g=>g.id!==guestId);
+    broadcastToRoom(room,'scan_result',{guestId,guestName:guest.name,isGhost:true,scannerName:scanner});
+    addLog(room,`👻 ${scanner} สแกน ${guest.name} → เป็นผี! ไล่ออกแล้ว`,'good');
+  } else {
+    room.stars = Math.max(0,room.stars-1);
+    broadcastToRoom(room,'scan_result',{guestId,guestName:guest.name,isGhost:false,scannerName:scanner,stars:room.stars});
+    addLog(room,`⚠️ ${scanner} สแกน ${guest.name} → เป็นคน! เสีย 1 ดาว`,'bad');
+    if (room.stars<=0) endGame(room,'no_stars');
+  }
+  broadcastState(room);
+}
+
+// ---- VOTE END GAME ----
+function voteEndGame(room, socketId) {
+  room.voteEnd[socketId] = true;
+  const humanPlayers = Object.entries(room.players).filter(([,p])=>!p.isAI);
+  const votes = Object.keys(room.voteEnd).length;
+  const needed = Math.ceil(humanPlayers.length/2);
+  broadcastToRoom(room,'vote_end_update',{votes,needed});
+  if (votes>=needed) {
+    // เช็คว่ายังมีผีอยู่ไหม
+    const ghostsInRooms = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+    const ghostStaffAlive = room.ghostStaff.filter(id=>room.players[id]).length;
+    if (ghostsInRooms===0 && ghostStaffAlive===0) {
+      endGame(room,'win');
     } else {
-      room.hotelTime = Math.max(0, room.hotelTime - SCAN_PENALTY);
-      broadcastToRoom(room, 'player_scanned', {
-        targetName: target.name, isGhost: false,
-        penalty: SCAN_PENALTY, scannerName: room.players[socket.id]?.name,
-        hotelTime: room.hotelTime,
-      });
-      if (room.hotelTime <= 0) endGame(room, 'timeout');
+      // โหวตจบแต่ยังมีผี = แพ้
+      endGame(room,'vote_with_ghost');
     }
-  });
+  }
+}
 
-  socket.on('vote_end', () => {
-    const room = rooms[socket.roomId];
-    if (!room || room.phase !== 'hotel') return;
-    room.voteCount++;
-    const total = Object.keys(room.players).length;
-    broadcastToRoom(room, 'vote_update', {
-      votes: room.voteCount,
-      needed: Math.ceil(total / 2),
+// ---- AI ----
+function aiVoteGuest(room, guest) {
+  if (!guest.voteActive) return;
+  // AI วิเคราะห์ clue
+  const score = analyzeGuestAI(guest);
+  const vote = score > 0.5 ? 'reject' : 'accept';
+  guest.votes[vote]++;
+  guest.votes.voters.push('AI');
+  broadcastToRoom(room,'guest_vote_cast',{guestId:guest.id, vote, voterName:'ระบบ AI', accept:guest.votes.accept, reject:guest.votes.reject});
+
+  // ถ้า AI มั่นใจมาก reject ทันที
+  const humanCount = Object.keys(room.players).filter(id=>!room.players[id].isAI).length;
+  if (score>0.75 && guest.votes.reject > guest.votes.accept) {
+    setTimeout(()=>resolveGuestVote(room,guest,'ai_reject'), 1500);
+  }
+}
+
+function analyzeGuestAI(guest) {
+  // score 0-1: 1 = น่าจะผี
+  let score = 0;
+  // บัตร
+  if (guest.cardType==='เจาะรู') score+=0.3;
+  if (guest.cardType==='ไม่มีบัตร') score+=0.2;
+  // clue
+  guest.clues.forEach(c=>{
+    if (GHOST_CLUES.includes(c)) score+=0.25;
+    if (HUMAN_CLUES.includes(c)) score-=0.15;
+    if (AMBIGUOUS_CLUES.includes(c)) score+=0.05;
+  });
+  // ส่วนสูง/น้ำหนักผิดปกติ
+  if (guest.height<148||guest.height>188) score+=0.1;
+  if (guest.weight<42||guest.weight>95) score+=0.1;
+  return Math.min(1,Math.max(0,score));
+}
+
+function runAI(room) {
+  // AI staff ช่วย task และวิเคราะห์แขก
+  const interval = setInterval(()=>{
+    if (room.phase!=='playing'){clearInterval(interval);return;}
+    Object.entries(room.players).forEach(([id,p])=>{
+      if (!p.isAI) return;
+      // AI join task
+      const pending = room.tasks.find(t=>!t.completed&&!t.progress[id]);
+      if (pending&&Math.random()<0.4) joinTask(room,id,pending.id);
     });
-    if (room.voteCount >= Math.ceil(total / 2)) endGame(room, 'vote');
+  },4000+Math.random()*3000);
+  room.aiIntervals.push(interval);
+}
+
+// ---- END GAME ----
+function endGame(room, reason) {
+  if (room.phase==='ended') return;
+  room.phase = 'ended';
+  if (room.roundInterval) clearInterval(room.roundInterval);
+  room.aiIntervals.forEach(iv=>clearInterval(iv));
+  room.aiIntervals=[];
+  Object.values(room.guestQueue).forEach(g=>clearTimeout(g.voteTimeout));
+
+  const win = reason==='win';
+  const ghostsInRooms = Object.values(room.hotelRooms).filter(r=>r.hasGhost).length;
+  const ghostStaffAlive = room.ghostStaff.filter(id=>room.players[id]).length;
+
+  // เปิดเผยความจริงทั้งหมด
+  const revealRooms = Object.values(room.hotelRooms).map(r=>({
+    id:r.id,
+    guestName:r.guest?.name||null,
+    hasGhost:r.hasGhost,
+  }));
+
+  const reasonText = {
+    'win':          '✅ ไล่ผีออกหมดแล้ว โรงแรมปลอดภัย!',
+    'no_stars':     '💔 ดาวหมดแล้ว โรงแรมเสียชื่อเสียง!',
+    'ghost_full':   '👻 ผียึดครองโรงแรมครบทุกห้องแล้ว!',
+    'vote_with_ghost':'⚠️ โหวตจบเกมแต่ยังมีผีซ่อนอยู่!',
+    'timeout':      '⏱️ เวลาหมด',
+  }[reason]||reason;
+
+  broadcastToRoom(room,'game_over',{
+    win, reason, reasonText,
+    stars: room.stars,
+    ghostsInRooms, ghostStaffAlive,
+    revealRooms,
+    players: Object.values(room.players).map(p=>({name:p.name,role:p.role,isAI:p.isAI||false})),
+    allGuests: [...room.guestQueue, ...Object.values(room.hotelRooms).filter(r=>r.guest).map(r=>r.guest)]
+      .map(g=>({ name:g.name, isGhost:g.isGhost, checkedIn:g.checkedIn, cardType:g.cardType })),
+  });
+}
+
+// ---- SOCKET ----
+io.on('connection', socket=>{
+  socket.on('join_room',({roomId,playerName})=>{
+    if (!rooms[roomId]) rooms[roomId]=createRoom(roomId);
+    const room=rooms[roomId];
+    if (room.phase!=='lobby'){socket.emit('error_msg','เกมเริ่มแล้ว');return;}
+    room.players[socket.id]={
+      name:playerName, isAI:false,
+      isHost:Object.keys(room.players).filter(id=>!room.players[id].isAI).length===0,
+      role:'human', currentRoom:'lobby', taskProgress:{},
+    };
+    socket.join(roomId);
+    socket.roomId=roomId;
+    broadcastToRoom(room,'lobby_update',{
+      players:Object.values(room.players).map(p=>({name:p.name,isHost:p.isHost,isAI:p.isAI||false})),
+      count:Object.keys(room.players).length,
+    });
   });
 
-  socket.on('checkin_guest', ({ guestId }) => {
-    const room = rooms[socket.roomId];
-    if (!room) return;
-    const guest = room.guests.find(g => g.id === guestId);
-    if (guest) guest.checkedIn = true;
+  socket.on('start_game',()=>{
+    const room=rooms[socket.roomId];
+    if (!room||!room.players[socket.id]?.isHost) return;
+    if (Object.keys(room.players).filter(id=>!room.players[id].isAI).length<MIN_PLAYERS){
+      socket.emit('error_msg',`ต้องการผู้เล่นอย่างน้อย ${MIN_PLAYERS} คน`);return;
+    }
+    // กำหนด role ผู้เล่น — ผี 30%
+    const ids=Object.keys(room.players).filter(id=>!room.players[id].isAI);
+    const ghostCount=Math.max(0,Math.floor(ids.length*0.3));
+    const shuffled=[...ids].sort(()=>Math.random()-0.5);
+    shuffled.forEach((id,i)=>{
+      room.players[id].role=i<ghostCount?'ghost':'human';
+      // บอก role เฉพาะตัวเอง
+      io.to(id).emit('your_role',{role:room.players[id].role});
+    });
+    addAIStaff(room);
+    room.phase='playing';
+    startRound(room);
   });
 
-  socket.on('disconnect', () => {
-    const room = rooms[socket.roomId];
+  socket.on('vote_guest',({guestId,vote})=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    const guest=room.guestQueue.find(g=>g.id===guestId);
+    if (!guest||!guest.voteActive) return;
+    if (guest.votes.voters.includes(socket.id)) return;
+    guest.votes.voters.push(socket.id);
+    guest.votes[vote]++;
+    const pName=room.players[socket.id]?.name||'?';
+    broadcastToRoom(room,'guest_vote_cast',{guestId,vote,voterName:pName,accept:guest.votes.accept,reject:guest.votes.reject});
+    // majority check
+    const humanCount=Object.keys(room.players).filter(id=>!room.players[id].isAI).length;
+    const majority=Math.ceil(humanCount/2);
+    if (guest.votes.accept>=majority||guest.votes.reject>=majority) {
+      resolveGuestVote(room,guest,'majority');
+    }
+  });
+
+  socket.on('scan_guest',({guestId})=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    scanGuest(room,socket.id,guestId);
+  });
+
+  socket.on('join_task',({taskId})=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    joinTask(room,socket.id,taskId);
+  });
+
+  socket.on('vote_end_game',()=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    voteEndGame(room,socket.id);
+  });
+
+  socket.on('move_room',({roomId})=>{
+    const room=rooms[socket.roomId];
+    if (!room||room.phase!=='playing') return;
+    const player=room.players[socket.id];
+    if (!player) return;
+    player.currentRoom=roomId;
+    socket.emit('moved_to',{roomId});
+    // ถ้าห้องมี clue — ส่งให้
+    const hr=room.hotelRooms[roomId];
+    if (hr?.clueLeft) {
+      socket.emit('clue_found',{roomId,text:hr.clueLeft,source:'room'});
+      hr.clueLeft=null;
+    }
+    broadcastState(room);
+  });
+
+  socket.on('disconnect',()=>{
+    const room=rooms[socket.roomId];
     if (!room) return;
-    const name = room.players[socket.id]?.name;
+    const name=room.players[socket.id]?.name;
     delete room.players[socket.id];
-    if (Object.keys(room.players).filter(id => !room.players[id]?.isAI).length === 0) {
-      if (room.timerInterval) clearInterval(room.timerInterval);
-      if (room.guestInterval) clearInterval(room.guestInterval);
-      room.aiIntervals.forEach(iv => clearInterval(iv));
+    const humans=Object.keys(room.players).filter(id=>!room.players[id]?.isAI);
+    if (humans.length===0) {
+      if (room.roundInterval) clearInterval(room.roundInterval);
+      room.aiIntervals.forEach(iv=>clearInterval(iv));
       delete rooms[socket.roomId];
     } else {
-      broadcastToRoom(room, 'player_left', { name });
+      broadcastToRoom(room,'player_left',{name});
     }
   });
 });
 
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => console.log(`Hotel Ghost running on :${PORT}`));
+const PORT=process.env.PORT||8080;
+server.listen(PORT,()=>console.log(`Hotel Ghost v2 on :${PORT}`));
