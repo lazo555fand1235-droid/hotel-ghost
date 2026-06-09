@@ -1,4 +1,3 @@
-cat > /home/claude/index_new.html << 'ENDOFFILE'
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -7,487 +6,752 @@ cat > /home/claude/index_new.html << 'ENDOFFILE'
 <title>Hotel Ghost 👻</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0f1a; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
-  .screen { display: none; }
-  .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-  #lobby-screen { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); }
-  .lobby-box { background: #1e1e30; border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-  .game-title { font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
-  .game-title span { color: #a99df5; }
-  .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 0.9rem; }
-  .input-group { margin-bottom: 16px; }
-  .input-group label { display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 6px; }
-  .input-group input { width: 100%; padding: 12px 16px; background: #2a2a40; border: 1px solid #3a3a55; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; transition: border-color 0.2s; }
-  .input-group input:focus { border-color: #a99df5; }
-  .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-  .btn-primary { background: linear-gradient(135deg, #7c6cf5, #a99df5); color: #fff; }
-  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-secondary { background: #2a2a40; color: #ccc; border: 1px solid #3a3a55; margin-top: 10px; }
-  .btn-ai { background: #2a2a40; color: #ffd93d; border: 1px solid #ffd93d44; margin-top: 10px; }
-  .btn-ai:hover { background: #ffd93d22; }
-  .btn-danger { background: #e74c3c; color: #fff; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  #waiting-screen { background: #0f0f1a; }
-  .waiting-box { background: #1e1e30; border-radius: 16px; padding: 32px; width: 100%; max-width: 480px; }
-  .room-id-display { background: #2a2a40; border-radius: 10px; padding: 16px; text-align: center; margin-bottom: 20px; }
-  .room-id-display .label { font-size: 0.8rem; color: #888; margin-bottom: 4px; }
-  .room-id-display .rid { font-size: 2rem; font-weight: 800; color: #a99df5; letter-spacing: 4px; }
-  .copy-btn { background: none; border: 1px solid #a99df5; color: #a99df5; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 0.8rem; margin-top: 8px; }
-  #waiting-player-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
-  .player-item { display: flex; align-items: center; gap: 8px; background: #2a2a40; border-radius: 8px; padding: 8px 12px; }
-  .player-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; }
-  .player-name { font-size: 0.9rem; }
-  .host-badge { background: #f39c12; color: #000; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; }
-  .ai-badge { background: #ffd93d22; color: #ffd93d; border: 1px solid #ffd93d44; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; }
-  #player-count-text { color: #888; font-size: 0.85rem; margin-bottom: 16px; }
-  #pic-screen { background: #0f0f1a; }
-  .pic-box { background: #1e1e30; border-radius: 16px; padding: 24px; width: 100%; max-width: 600px; }
-  #pic-status { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
-  #pic-timer { font-size: 2.5rem; font-weight: 800; color: #ff6b6b; text-align: center; margin-bottom: 12px; }
-  #draw-canvas { border-radius: 8px; border: 2px solid #3a3a55; cursor: crosshair; width: 100%; max-width: 520px; height: 320px; background: #fff; display: block; }
-  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
-  .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: border-color 0.2s; }
-  .color-btn.active { border-color: #fff; }
-  .size-btn { background: #2a2a40; border: 1px solid #3a3a55; color: #ccc; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; }
-  .size-btn.active { background: #a99df5; color: #fff; border-color: #a99df5; }
-  .eraser-btn { background: #2a2a40; border: 1px solid #3a3a55; color: #ccc; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; }
-  #draw-prompt { font-size: 1.2rem; font-weight: 700; color: #a99df5; margin-bottom: 10px; }
-  #draw-panel, #guess-panel, #wait-panel { display: none; flex-direction: column; align-items: center; width: 100%; }
-  #pic-image-preview { max-width: 100%; border-radius: 8px; margin-bottom: 12px; border: 2px solid #3a3a55; }
-  #guess-input { width: 100%; padding: 10px 14px; background: #2a2a40; border: 1px solid #3a3a55; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; margin-bottom: 10px; }
-  #wait-text { color: #888; font-size: 1rem; text-align: center; }
-  .wait-icon { font-size: 3rem; margin-bottom: 12px; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-  #role-screen { background: #0f0f1a; }
-  .role-box { background: #1e1e30; border-radius: 16px; padding: 32px; width: 100%; max-width: 400px; text-align: center; }
-  .role-card { border-radius: 12px; padding: 30px; margin: 20px 0; }
-  .role-ghost { background: rgba(169,157,245,0.1); border: 2px solid #a99df5; }
-  .role-human { background: rgba(107,203,119,0.1); border: 2px solid #6bcb77; }
-  .role-icon { font-size: 4rem; margin-bottom: 10px; }
-  .role-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; }
-  .role-desc { color: #aaa; font-size: 0.9rem; }
-  #guess-result { color: #ffd93d; font-size: 1rem; margin-bottom: 12px; }
-  #role-countdown { color: #666; font-size: 0.9rem; margin-top: 16px; }
-  #hotel-screen { background: #0f0f1a; align-items: flex-start; }
-  .hotel-container { width: 100%; max-width: 900px; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .hotel-header { grid-column: 1/-1; display: flex; justify-content: space-between; align-items: center; background: #1e1e30; border-radius: 12px; padding: 16px 20px; }
-  .hotel-title { font-size: 1.3rem; font-weight: 700; }
-  #hotel-time-display { font-size: 1.8rem; font-weight: 800; color: #6bcb77; }
-  #hotel-time-display.warning { color: #ff6b6b; animation: pulse 1s infinite; }
-  #my-role-display { font-size: 0.9rem; }
-  .panel { background: #1e1e30; border-radius: 12px; padding: 16px; }
-  .panel-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #666; margin-bottom: 12px; }
-  .guest-card { display: flex; justify-content: space-between; align-items: center; background: #2a2a40; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
-  .g-name { display: flex; align-items: center; gap: 8px; }
-  .g-icon { font-size: 1.2rem; }
-  .scan-btn { background: #a99df5; border: none; color: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
-  .scan-btn:hover { opacity: 0.85; }
-  .pcard { background: #2a2a40; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
-  .p-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .p-role-badge { border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
-  .p-role-unknown { background: #333; color: #888; }
-  .p-role-ghost { background: rgba(169,157,245,0.2); color: #a99df5; }
-  .p-role-human { background: rgba(107,203,119,0.2); color: #6bcb77; }
-  .vote-section { grid-column: 1/-1; background: #1e1e30; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px; }
-  .vote-bar { flex: 1; height: 10px; background: #2a2a40; border-radius: 5px; overflow: hidden; }
-  #vote-fill { height: 100%; background: #a99df5; border-radius: 5px; width: 0%; transition: width 0.3s; }
-  #vote-text { color: #aaa; font-size: 0.9rem; min-width: 60px; text-align: center; }
-  .log-panel { grid-column: 1/-1; background: #1e1e30; border-radius: 12px; padding: 16px; max-height: 180px; overflow: hidden; }
-  #event-log { height: 130px; overflow-y: auto; font-size: 0.82rem; }
-  #event-log::-webkit-scrollbar { width: 4px; }
-  #event-log::-webkit-scrollbar-thumb { background: #3a3a55; border-radius: 2px; }
-  .log-entry { padding: 3px 0; border-bottom: 1px solid #2a2a40; color: #aaa; }
-  .log-entry.good { color: #6bcb77; }
-  .log-entry.bad { color: #ff6b6b; }
-  .log-entry.info { color: #a99df5; }
-  .text-muted { color: #555; font-size: 0.85rem; }
-  #end-screen { background: #0f0f1a; }
-  .end-card { background: #1e1e30; border-radius: 16px; padding: 36px; width: 100%; max-width: 420px; text-align: center; }
-  .end-win { border: 2px solid #6bcb77; }
-  .end-lose { border: 2px solid #ff6b6b; }
-  #end-icon { font-size: 4rem; }
-  #end-title { font-size: 2rem; font-weight: 800; margin: 10px 0; }
-  #end-desc { color: #aaa; margin-bottom: 20px; }
-  .reveal-item { display: flex; align-items: center; gap: 10px; background: #2a2a40; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; text-align: left; }
-  #reveal-list { margin-bottom: 20px; width: 100%; }
-  #toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
-  .toast { background: #2a2a40; border-left: 4px solid #a99df5; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: slidein 0.3s ease; max-width: 300px; }
-  .toast.good { border-color: #6bcb77; }
-  .toast.bad { border-color: #ff6b6b; }
-  .toast.warn { border-color: #ffd93d; }
-  .toast.info { border-color: #4ecdc4; }
-  @keyframes slidein { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
-  @media (max-width: 600px) {
-    .hotel-container { grid-template-columns: 1fr; }
-    .hotel-header { flex-direction: column; gap: 8px; text-align: center; }
-    #draw-canvas { height: 240px; }
-  }
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a14;--bg2:#11111f;--bg3:#18182a;--bg4:#20203a;
+  --accent:#8b7cf6;--accent2:#b8aeff;--green:#4ecb71;--red:#e05252;
+  --yellow:#f0c040;--blue:#4eb8cb;--text:#ddd;--muted:#666;
+  --border:#2a2a44;--radius:10px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Tahoma,sans-serif;min-height:100vh;}
+.screen{display:none;}
+.screen.active{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:16px;}
+
+/* ---- LOBBY ---- */
+#lobby-screen{background:radial-gradient(ellipse at 50% 0%,#1a1040 0%,var(--bg) 70%);}
+.lobby-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:400px;}
+.game-logo{text-align:center;margin-bottom:24px;}
+.game-logo h1{font-size:2.4rem;font-weight:900;letter-spacing:-1px;}
+.game-logo h1 span{color:var(--accent2);}
+.game-logo p{color:var(--muted);font-size:.85rem;margin-top:4px;}
+.inp-group{margin-bottom:14px;}
+.inp-group label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}
+.inp-group input{width:100%;padding:11px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.95rem;outline:none;transition:border-color .2s;}
+.inp-group input:focus{border-color:var(--accent);}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:6px;}
+.btn-main{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-main:hover{opacity:.88;transform:translateY(-1px);}
+.btn-ghost{background:var(--bg4);color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn:disabled{opacity:.35;pointer-events:none;}
+
+/* ---- WAITING ---- */
+#waiting-screen{background:var(--bg);}
+.wait-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:460px;}
+.room-badge{background:var(--bg4);border-radius:10px;padding:14px;text-align:center;margin-bottom:18px;}
+.room-badge .lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;}
+.room-badge .rid{font-size:2.2rem;font-weight:900;color:var(--accent2);letter-spacing:5px;}
+.copy-btn{background:none;border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:3px 10px;cursor:pointer;font-size:.75rem;margin-top:6px;}
+.player-grid{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.pchip{display:flex;align-items:center;gap:7px;background:var(--bg4);border-radius:8px;padding:7px 12px;font-size:.88rem;}
+.pchip .ava{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;}
+.host-tag{background:var(--yellow);color:#000;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:800;}
+.ai-tag{background:#333;color:var(--muted);border-radius:4px;padding:1px 6px;font-size:.68rem;}
+
+/* ---- GAME ---- */
+#game-screen{background:var(--bg);align-items:flex-start;padding:12px;}
+.game-wrap{width:100%;max-width:980px;}
+
+/* header bar */
+.hbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.hbar-left{display:flex;align-items:center;gap:16px;}
+.stars-row{display:flex;gap:3px;font-size:1.2rem;}
+.round-badge{background:var(--bg4);border-radius:6px;padding:4px 10px;font-size:.82rem;color:var(--muted);}
+.timer-big{font-size:1.6rem;font-weight:900;color:var(--green);min-width:48px;text-align:right;}
+.timer-big.warn{color:var(--red);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* grid */
+.game-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.panel-title{font-size:.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.panel-title span{background:var(--bg4);border-radius:4px;padding:1px 6px;font-size:.75rem;color:var(--accent2);}
+
+/* guest queue */
+.guest-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;transition:border-color .2s;}
+.guest-card.voting{border-color:var(--yellow);}
+.gc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.gc-name{font-weight:700;font-size:.95rem;}
+.gc-card{font-size:.72rem;border-radius:4px;padding:2px 7px;font-weight:700;}
+.card-ok{background:rgba(78,203,113,.15);color:var(--green);}
+.card-hole{background:rgba(240,192,64,.15);color:var(--yellow);}
+.card-none{background:rgba(224,82,82,.15);color:var(--red);}
+.gc-stats{display:flex;gap:10px;font-size:.78rem;color:var(--muted);margin-bottom:7px;flex-wrap:wrap;}
+.gc-clues{margin-bottom:8px;}
+.clue-item{font-size:.75rem;color:#aaa;padding:2px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;}
+.clue-item::before{content:'•';color:var(--accent);flex-shrink:0;}
+.gc-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.vote-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.vote-counts{font-size:.78rem;color:var(--muted);}
+.vote-bar-wrap{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.vote-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;}
+.btn-sm{padding:5px 10px;border:none;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-accept{background:rgba(78,203,113,.2);color:var(--green);border:1px solid rgba(78,203,113,.3);}
+.btn-accept:hover{background:rgba(78,203,113,.35);}
+.btn-reject{background:rgba(224,82,82,.2);color:var(--red);border:1px solid rgba(224,82,82,.3);}
+.btn-reject:hover{background:rgba(224,82,82,.35);}
+.btn-scan{background:rgba(139,124,246,.2);color:var(--accent2);border:1px solid rgba(139,124,246,.3);}
+.btn-scan:hover{background:rgba(139,124,246,.35);}
+.checkedin-tag{font-size:.72rem;color:var(--muted);font-style:italic;}
+
+/* hotel rooms */
+.rooms-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.room-cell{background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:8px 7px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.room-cell:hover{border-color:var(--accent);}
+.room-cell.occupied{border-color:var(--blue);}
+.room-cell.my-room{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(184,174,255,.2);}
+.room-cell .rnum{font-size:.8rem;font-weight:700;color:var(--accent2);}
+.room-cell .rguest{font-size:.65rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.room-cell .ricon{font-size:1rem;margin-bottom:2px;}
+.clue-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--yellow);border-radius:50%;}
+
+/* tasks */
+.task-card{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.task-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.task-name{font-weight:700;font-size:.9rem;}
+.task-done{color:var(--green);font-size:.78rem;}
+.task-desc{font-size:.78rem;color:var(--muted);margin-bottom:7px;}
+.task-prog{font-size:.75rem;color:var(--blue);margin-bottom:6px;}
+.progress-bar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:7px;}
+.progress-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .3s;}
+
+/* clues panel */
+.clue-log{max-height:160px;overflow-y:auto;font-size:.78rem;}
+.clue-log::-webkit-scrollbar{width:3px;}
+.clue-log::-webkit-scrollbar-thumb{background:var(--border);}
+.clue-entry{padding:4px 0;border-bottom:1px solid var(--border);color:#aaa;display:flex;gap:6px;}
+.clue-entry .ce-src{color:var(--yellow);font-size:.7rem;flex-shrink:0;}
+
+/* event log */
+.log-wrap{grid-column:1/-1;}
+.elog{max-height:120px;overflow-y:auto;font-size:.78rem;}
+.elog::-webkit-scrollbar{width:3px;}
+.elog::-webkit-scrollbar-thumb{background:var(--border);}
+.log-line{padding:3px 0;border-bottom:1px solid var(--bg4);color:var(--muted);}
+.log-line.good{color:var(--green);}
+.log-line.bad{color:var(--red);}
+.log-line.info{color:var(--accent2);}
+.log-line.warn{color:var(--yellow);}
+
+/* vote end game */
+.vote-end-row{grid-column:1/-1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:14px;}
+.ve-bar-wrap{flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.ve-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;}
+
+/* role badge in header */
+.role-badge{border-radius:6px;padding:4px 10px;font-size:.8rem;font-weight:700;}
+.role-ghost{background:rgba(139,124,246,.2);color:var(--accent2);}
+.role-human{background:rgba(78,203,113,.2);color:var(--green);}
+
+/* ---- ROLE REVEAL ---- */
+#role-screen{background:var(--bg);}
+.role-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:100%;text-align:center;}
+.role-card-inner{border-radius:12px;padding:28px 24px;margin:18px 0;}
+.rci-ghost{background:rgba(139,124,246,.08);border:2px solid var(--accent);}
+.rci-human{background:rgba(78,203,113,.08);border:2px solid var(--green);}
+.role-icon{font-size:4rem;margin-bottom:8px;}
+.role-title{font-size:1.5rem;font-weight:900;margin-bottom:6px;}
+.role-desc{font-size:.85rem;color:var(--muted);}
+#role-cd{color:var(--muted);font-size:.85rem;margin-top:14px;}
+
+/* ---- END ---- */
+#end-screen{background:var(--bg);}
+.end-box{background:var(--bg3);border-radius:16px;padding:32px;max-width:440px;width:100%;text-align:center;}
+.end-win{border:2px solid var(--green);}
+.end-lose{border:2px solid var(--red);}
+#end-icon{font-size:4rem;}
+#end-title{font-size:2rem;font-weight:900;margin:10px 0;}
+#end-desc{color:var(--muted);margin-bottom:18px;font-size:.9rem;}
+.reveal-list{margin-bottom:16px;width:100%;}
+.rev-item{display:flex;align-items:center;gap:10px;background:var(--bg4);border-radius:7px;padding:9px 12px;margin-bottom:6px;text-align:left;font-size:.88rem;}
+.rev-room{border-radius:7px;padding:9px 12px;margin-bottom:6px;background:var(--bg4);display:flex;align-items:center;gap:10px;font-size:.82rem;}
+.rev-ghost{color:var(--accent2);}
+.rev-human{color:var(--green);}
+.final-stars{font-size:1.4rem;margin-bottom:8px;}
+
+/* ---- TOAST ---- */
+#toast-container{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:7px;z-index:9999;}
+.toast{background:var(--bg3);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.5);animation:tin .3s ease;max-width:280px;}
+.toast.good{border-color:var(--green);}
+.toast.bad{border-color:var(--red);}
+.toast.warn{border-color:var(--yellow);}
+.toast.info{border-color:var(--blue);}
+@keyframes tin{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+/* MY ROLE DISPLAY */
+#my-role-chip{font-size:.82rem;}
+
+/* responsive */
+@media(max-width:700px){
+  .game-grid{grid-template-columns:1fr;}
+  .rooms-grid{grid-template-columns:repeat(4,1fr);}
+  .hbar{flex-direction:column;align-items:flex-start;}
+}
 </style>
 </head>
 <body>
 
-<!-- LOBBY -->
-<div class="screen active" id="lobby-screen">
-  <div class="lobby-box">
-    <div class="game-title">Hotel <span>Ghost</span> 👻</div>
-    <div class="subtitle">เกมจับผีในโรงแรม • 2+ ผู้เล่น</div>
-    <div class="input-group">
-      <label>ชื่อผู้เล่น</label>
-      <input type="text" id="player-name" placeholder="ใส่ชื่อของคุณ" maxlength="16">
+<!-- ===== LOBBY ===== -->
+<div id="lobby-screen" class="screen active">
+  <div class="lobby-wrap">
+    <div class="game-logo">
+      <h1>Hotel <span>Ghost</span> 👻</h1>
+      <p>คัดกรองผีออกจากโรงแรม — ก่อนที่จะสายเกินไป</p>
     </div>
-    <div class="input-group">
-      <label>รหัสห้อง (เว้นว่างถ้าสร้างใหม่)</label>
-      <input type="text" id="room-id-input" placeholder="เช่น ABC12" maxlength="8" style="text-transform:uppercase">
-    </div>
-    <button class="btn btn-primary" onclick="joinGame()">🎮 เข้าร่วม / สร้างห้อง</button>
+    <div class="inp-group"><label>ชื่อผู้เล่น</label><input id="inp-name" placeholder="กรอกชื่อ..." maxlength="16"></div>
+    <div class="inp-group"><label>รหัสห้อง</label><input id="inp-room" placeholder="ใส่รหัส หรือปล่อยว่างเพื่อสร้างใหม่" maxlength="8"></div>
+    <button class="btn btn-main" onclick="joinRoom()">เข้าห้อง / สร้างห้อง</button>
   </div>
 </div>
 
-<!-- WAITING -->
-<div class="screen" id="waiting-screen">
-  <div class="waiting-box">
-    <div class="room-id-display">
-      <div class="label">รหัสห้อง — แชร์ให้เพื่อน</div>
-      <div class="rid" id="display-room-id">-----</div>
-      <button class="copy-btn" onclick="copyRoomId()">📋 คัดลอก</button>
+<!-- ===== WAITING ===== -->
+<div id="waiting-screen" class="screen">
+  <div class="wait-box">
+    <div class="room-badge">
+      <div class="lbl">รหัสห้อง</div>
+      <div class="rid" id="w-roomid">----</div>
+      <button class="copy-btn" onclick="copyRoom()">คัดลอก</button>
     </div>
-    <div id="player-count-text">ผู้เล่น 0/2+ คน</div>
-    <div id="waiting-player-list"></div>
-    <button class="btn btn-ai" id="add-ai-btn" onclick="addAI()" style="display:none">🤖 + เพิ่ม AI</button>
-    <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled style="margin-top:10px">รอ Host เริ่มเกม...</button>
+    <div id="w-player-list" class="player-grid"></div>
+    <div id="w-count" style="color:var(--muted);font-size:.82rem;margin-bottom:14px;"></div>
+    <button class="btn btn-main" id="btn-start" onclick="startGame()" disabled>เริ่มเกม</button>
+    <button class="btn btn-ghost" id="btn-wait" style="display:none">รอ host เริ่ม...</button>
   </div>
 </div>
 
-<!-- PICTIONARY -->
-<div class="screen" id="pic-screen">
-  <div class="pic-box">
-    <div id="pic-status">กำลังโหลด...</div>
-    <div id="pic-timer">--</div>
-    <div id="draw-panel">
-      <div id="draw-prompt"></div>
-      <canvas id="draw-canvas" width="520" height="320"></canvas>
-      <div class="toolbar">
-        <div class="color-btn active" data-color="#000000" style="background:#000000" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#e74c3c" style="background:#e74c3c" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#e67e22" style="background:#e67e22" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#f1c40f" style="background:#f1c40f" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#2ecc71" style="background:#2ecc71" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#3498db" style="background:#3498db" onclick="setColor(this)"></div>
-        <div class="color-btn" data-color="#9b59b6" style="background:#9b59b6" onclick="setColor(this)"></div>
-        <button class="eraser-btn" onclick="toggleEraser()">🧹 ยางลบ</button>
-        <button class="size-btn active" data-size="4" onclick="setSize(this)">S</button>
-        <button class="size-btn" data-size="8" onclick="setSize(this)">M</button>
-        <button class="size-btn" data-size="16" onclick="setSize(this)">L</button>
-        <button class="eraser-btn" onclick="clearCanvas()">🗑️ ล้าง</button>
-      </div>
-      <button class="btn btn-primary" style="max-width:300px;margin-top:8px" onclick="submitDrawing()">✅ ส่งรูป</button>
-    </div>
-    <div id="guess-panel">
-      <img id="pic-image-preview" src="" alt="รูปที่วาด">
-      <input type="text" id="guess-input" placeholder="เดาว่ารูปนี้คืออะไร...">
-      <button class="btn btn-primary" style="max-width:300px" onclick="submitGuess()">🎯 ส่งคำตอบ</button>
-    </div>
-    <div id="wait-panel">
-      <div class="wait-icon">⏳</div>
-      <div id="wait-text">กำลังรอ...</div>
-    </div>
-  </div>
-</div>
-
-<!-- ROLE REVEAL -->
-<div class="screen" id="role-screen">
+<!-- ===== ROLE REVEAL ===== -->
+<div id="role-screen" class="screen">
   <div class="role-box">
-    <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">บทของคุณ</div>
-    <div id="guess-result"></div>
-    <div id="role-card-container"></div>
-    <div id="role-countdown"></div>
+    <h2 style="margin-bottom:4px;">บทบาทของคุณ</h2>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:4px;">จำไว้ให้ดี — ห้ามบอกคนอื่น</p>
+    <div id="role-card-inner"></div>
+    <div id="role-cd"></div>
   </div>
 </div>
 
-<!-- HOTEL -->
-<div class="screen" id="hotel-screen">
-  <div class="hotel-container">
-    <div class="hotel-header">
-      <div>
-        <div class="hotel-title">🏨 Hotel Ghost</div>
-        <div id="my-role-display"></div>
+<!-- ===== GAME ===== -->
+<div id="game-screen" class="screen">
+  <div class="game-wrap">
+
+    <!-- header -->
+    <div class="hbar">
+      <div class="hbar-left">
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">คะแนนดาว</div>
+          <div class="stars-row" id="stars-row">⭐⭐⭐⭐⭐</div>
+        </div>
+        <div class="round-badge">รอบ <span id="round-num">1</span></div>
+        <div id="my-role-chip"></div>
       </div>
-      <div id="hotel-time-display">05:00</div>
+      <div>
+        <div style="font-size:.68rem;color:var(--muted);text-align:right;">เวลารอบนี้</div>
+        <div class="timer-big" id="timer-display">20</div>
+      </div>
     </div>
-    <div class="panel">
-      <div class="panel-title">🧍 แขกที่รอเช็คอิน</div>
-      <div id="guest-list"><p class="text-muted">ยังไม่มีแขก</p></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">👥 พนักงาน / ผู้เล่น</div>
-      <div id="player-cards"></div>
-    </div>
-    <div class="vote-section">
-      <button class="btn btn-danger" style="width:auto;padding:10px 20px;white-space:nowrap" onclick="voteEnd()">🗳️ โหวตจบเกม</button>
-      <div class="vote-bar"><div id="vote-fill"></div></div>
-      <div id="vote-text">0/0</div>
-    </div>
-    <div class="log-panel">
-      <div class="panel-title">📋 Event Log</div>
-      <div id="event-log"></div>
+
+    <!-- main grid -->
+    <div class="game-grid">
+
+      <!-- col 1: guest queue -->
+      <div class="panel">
+        <div class="panel-title">🧍 แถวรอแขก <span id="queue-count">0</span></div>
+        <div id="guest-list"></div>
+      </div>
+
+      <!-- col 2: hotel rooms + tasks -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="panel">
+          <div class="panel-title">🏨 ห้องพัก</div>
+          <div class="rooms-grid" id="rooms-grid"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">📋 ภารกิจ</div>
+          <div id="tasks-list"></div>
+        </div>
+      </div>
+
+      <!-- col 3: clues + players -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="panel">
+          <div class="panel-title">🔍 เบาะแส</div>
+          <div class="clue-log" id="clue-log"></div>
+          <div id="clue-empty" style="color:var(--muted);font-size:.78rem;text-align:center;padding:8px 0;">ยังไม่มีเบาะแส</div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">👥 ผู้เล่น</div>
+          <div id="player-list-game"></div>
+        </div>
+      </div>
+
+      <!-- vote end (full width) -->
+      <div class="vote-end-row">
+        <div style="font-size:.85rem;">โหวตจบเกม<br><span style="font-size:.72rem;color:var(--muted);">ต้องไม่มีผีอยู่ในโรงแรม</span></div>
+        <div class="ve-bar-wrap"><div class="ve-bar-fill" id="ve-fill" style="width:0%"></div></div>
+        <div id="ve-text" style="font-size:.82rem;color:var(--muted);min-width:40px;text-align:center;">0/1</div>
+        <button class="btn-sm btn-scan" onclick="voteEnd()" id="btn-vote-end">โหวต</button>
+      </div>
+
+      <!-- log (full width) -->
+      <div class="panel log-wrap">
+        <div class="panel-title">📜 บันทึกเหตุการณ์</div>
+        <div class="elog" id="elog"></div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- END -->
-<div class="screen" id="end-screen">
-  <div class="end-card" id="end-card">
+<!-- ===== END ===== -->
+<div id="end-screen" class="screen">
+  <div class="end-box" id="end-box">
     <div id="end-icon">🎉</div>
-    <div id="end-title">จบเกม</div>
+    <div id="end-title">ชนะแล้ว!</div>
+    <div class="final-stars" id="final-stars"></div>
     <div id="end-desc"></div>
-    <div id="reveal-list"></div>
-    <button class="btn btn-primary" onclick="location.reload()">🔄 เล่นอีกครั้ง</button>
+    <div class="reveal-list" id="reveal-rooms"></div>
+    <div class="reveal-list" id="reveal-players"></div>
+    <div class="reveal-list" id="reveal-guests"></div>
+    <button class="btn btn-main" onclick="location.reload()">เล่นใหม่</button>
   </div>
 </div>
 
+<!-- Toast container -->
 <div id="toast-container"></div>
 
 <script>
 const socket = io();
-let myName = '', myRoomId = '', isHost = false, myRole = null;
-let canvas, ctx, drawing = false, currentColor = '#000000', currentSize = 4, isEraser = false, lastX = 0, lastY = 0;
-let guestMap = {}, playerMap = {};
+let myRoomId = '';
+let myRole = 'human';
+let myName = '';
+let isHost = false;
 
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+// state
+let guestMap = {};
+let playerMap = {};
+let clues = [];
+let tasks = [];
+let currentRoom = 'lobby';
+let votedEnd = false;
+
+const COLORS = ['#8b7cf6','#4ecb71','#e05252','#f0c040','#4eb8cb','#e09450'];
+function avatarColor(name){ let h=0;for(let c of name)h=(h+c.charCodeAt(0))%COLORS.length;return COLORS[h]; }
+function initials(name){ return name.slice(0,2).toUpperCase(); }
+function show(id){ document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';}); const el=document.getElementById(id);el.style.display='flex';el.classList.add('active'); }
+
+function toast(msg,type='',dur=3200){
+  const t=document.createElement('div');
+  t.className='toast '+(type||'');
+  t.textContent=msg;
+  const c=document.getElementById('toast-container');
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),dur);
+}
+function addLog(text,type=''){
+  const el=document.getElementById('elog');
+  if(!el)return;
+  const d=document.createElement('div');
+  d.className='log-line '+(type||'');
+  d.textContent=text;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
 }
 
-function joinGame() {
-  const name = document.getElementById('player-name').value.trim();
-  const roomInput = document.getElementById('room-id-input').value.trim().toUpperCase();
-  if (!name) { toast('ใส่ชื่อก่อนนะ', 'warn'); return; }
-  myName = name;
-  myRoomId = roomInput || Math.random().toString(36).substr(2, 5).toUpperCase();
-  socket.emit('join_room', { roomId: myRoomId, playerName: myName });
+// ---- JOIN ----
+function joinRoom(){
+  const name=document.getElementById('inp-name').value.trim();
+  const room=document.getElementById('inp-room').value.trim().toUpperCase()||
+    Math.random().toString(36).slice(2,6).toUpperCase();
+  if(!name){toast('ใส่ชื่อก่อนนะ','bad');return;}
+  myName=name;
+  myRoomId=room;
+  socket.emit('join_room',{roomId:room,playerName:name});
 }
-
-function copyRoomId() {
-  navigator.clipboard.writeText(myRoomId).then(() => toast('คัดลอกรหัสห้องแล้ว ✅', 'good'));
+function copyRoom(){
+  navigator.clipboard.writeText(myRoomId).then(()=>toast('คัดลอกรหัสห้องแล้ว','info'));
 }
+function startGame(){ socket.emit('start_game'); }
 
-function startGame() { socket.emit('start_game'); }
-function addAI() { socket.emit('add_ai'); }
-
-function initCanvas() {
-  canvas = document.getElementById('draw-canvas');
-  if (!canvas) return;
-  ctx = canvas.getContext('2d');
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  canvas.addEventListener('mousedown', startDraw);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDraw);
-  canvas.addEventListener('mouseleave', stopDraw);
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e.touches[0]); }, { passive: false });
-  canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(e.touches[0]); }, { passive: false });
-  canvas.addEventListener('touchend', stopDraw);
-}
-
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
-}
-
-function startDraw(e) {
-  drawing = true;
-  const { x, y } = getPos(e); lastX = x; lastY = y;
-  ctx.beginPath(); ctx.arc(x, y, currentSize / 2, 0, Math.PI * 2);
-  ctx.fillStyle = isEraser ? '#ffffff' : currentColor; ctx.fill();
-}
-
-function draw(e) {
-  if (!drawing) return;
-  const { x, y } = getPos(e);
-  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y);
-  ctx.strokeStyle = isEraser ? '#ffffff' : currentColor; ctx.lineWidth = currentSize; ctx.stroke();
-  lastX = x; lastY = y;
-}
-
-function stopDraw() { drawing = false; }
-function setColor(el) { isEraser = false; currentColor = el.dataset.color; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-function toggleEraser() { isEraser = !isEraser; }
-function setSize(el) { currentSize = parseInt(el.dataset.size); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-function clearCanvas() { if (!ctx) return; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-function submitDrawing() { socket.emit('pictionary_submit', { type: 'draw', data: canvas.toDataURL('image/png') }); showPicWaiting('ส่งรูปแล้ว รอผู้เล่นถัดไป...'); }
-function submitGuess() { const g = document.getElementById('guess-input').value.trim(); if (!g) return; socket.emit('pictionary_guess', { guess: g }); showPicWaiting('ส่งคำตอบแล้ว รอผล...'); }
-function showPicWaiting(text) { document.getElementById('draw-panel').style.display = 'none'; document.getElementById('guess-panel').style.display = 'none'; document.getElementById('wait-panel').style.display = 'flex'; document.getElementById('wait-text').textContent = text; }
-
-function updateGuestList() {
-  const el = document.getElementById('guest-list');
-  const guests = Object.values(guestMap).filter(g => !g.checkedIn);
-  if (guests.length === 0) { el.innerHTML = '<p class="text-muted">ยังไม่มีแขก</p>'; return; }
-  el.innerHTML = guests.map(g => `<div class="guest-card"><div class="g-name"><span class="g-icon">🧍</span>${g.name}</div><button class="scan-btn" onclick="scanGuest('${g.id}')">🔍 สแกน</button></div>`).join('');
-}
-
-function updatePlayerCards() {
-  const el = document.getElementById('player-cards');
-  const players = Object.entries(playerMap);
-  if (!players.length) { el.innerHTML = ''; return; }
-  el.innerHTML = players.map(([id, p]) => {
-    let roleClass = 'p-role-unknown', roleText = '❓ ไม่รู้';
-    if (p.roleRevealed) { if (p.role === 'ghost') { roleClass = 'p-role-ghost'; roleText = '👻 ผี'; } else { roleClass = 'p-role-human'; roleText = '👤 คน'; } }
-    const isSelf = id === socket.id;
-    const aiTag = p.isAI ? ' 🤖' : '';
-    return `<div class="pcard"><div class="p-name">${isSelf ? '⭐' : '👤'} ${p.name}${aiTag} ${isSelf ? '(คุณ)' : ''}<span class="p-role-badge ${roleClass}">${roleText}</span></div>${!isSelf && !p.isAI ? `<button class="scan-btn" onclick="scanPlayer('${id}')">🔍 สแกนพนักงาน</button>` : ''}</div>`;
-  }).join('');
-}
-
-function scanGuest(guestId) { socket.emit('scan_guest', { guestId }); }
-function scanPlayer(targetId) { socket.emit('scan_player', { targetId }); }
-function voteEnd() { socket.emit('vote_end'); toast('โหวตจบเกมแล้ว ⏳', 'info'); }
-
-function addLog(text, type = '') {
-  const el = document.getElementById('event-log');
-  const div = document.createElement('div');
-  div.className = 'log-entry ' + type;
-  const time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  div.textContent = `[${time}] ${text}`; el.appendChild(div); el.scrollTop = el.scrollHeight;
-}
-
-function formatTime(sec) { return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; }
-
-function toast(msg, type = '') {
-  const el = document.createElement('div');
-  el.className = 'toast ' + type; el.textContent = msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
-}
-
-// Socket events
-socket.on('lobby_update', ({ players, count, minPlayers }) => {
-  showScreen('waiting-screen');
-  document.getElementById('display-room-id').textContent = myRoomId;
-  document.getElementById('player-count-text').textContent = `ผู้เล่น ${count}/${minPlayers}+ คน`;
-  const colors = ['#ff6b6b','#ffd93d','#6bcb77','#7c6cf5','#4ecdc4','#ff9f43'];
-  document.getElementById('waiting-player-list').innerHTML = players.map((p, i) => `
-    <div class="player-item">
-      <div class="player-avatar" style="background:${colors[i%colors.length]}22;border:2px solid ${colors[i%colors.length]}">${p.name[0].toUpperCase()}</div>
-      <div class="player-name">${p.name}</div>
-      ${p.isHost ? '<div class="host-badge">👑 Host</div>' : ''}
-      ${p.isAI ? '<div class="ai-badge">🤖 AI</div>' : ''}
-    </div>`).join('');
-  isHost = players.find(p => p.name === myName)?.isHost || false;
-  const startBtn = document.getElementById('start-btn');
-  const addAIBtn = document.getElementById('add-ai-btn');
-  addAIBtn.style.display = isHost ? 'block' : 'none';
-  startBtn.disabled = !(isHost && count >= minPlayers);
-  startBtn.textContent = isHost
-    ? (count >= minPlayers ? `🎮 เริ่มเกม (${count} คน)` : `เริ่มเกม (ต้องการ ${minPlayers} คน)`)
-    : 'รอ Host เริ่มเกม...';
+socket.on('lobby_update',({players,count})=>{
+  show('waiting-screen');
+  document.getElementById('w-roomid').textContent=myRoomId;
+  const grid=document.getElementById('w-player-list');
+  grid.innerHTML='';
+  players.forEach(p=>{
+    const d=document.createElement('div');d.className='pchip';
+    d.innerHTML=`<div class="ava" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
+      <span>${p.name}</span>
+      ${p.isHost?'<span class="host-tag">HOST</span>':''}
+      ${p.isAI?'<span class="ai-tag">AI</span>':''}`;
+    grid.appendChild(d);
+  });
+  document.getElementById('w-count').textContent=`${count} คน`;
+  const meHost=players.find(p=>p.name===myName&&p.isHost);
+  isHost=!!meHost;
+  document.getElementById('btn-start').style.display=isHost?'':'none';
+  document.getElementById('btn-wait').style.display=isHost?'none':'';
+  document.getElementById('btn-start').disabled=count<1;
 });
 
-socket.on('pictionary_start', ({ totalPlayers, currentPlayer }) => {
-  showScreen('pic-screen'); initCanvas();
-  showPicWaiting(`${currentPlayer} กำลังวาดรูป...`);
-  document.getElementById('pic-status').textContent = `ภารกิจ: วาดรูปส่งต่อ (${totalPlayers} คน)`;
+// ---- ROLE ----
+socket.on('your_role',({role})=>{
+  myRole=role;
+  show('role-screen');
+  const isGhost=role==='ghost';
+  document.getElementById('role-card-inner').innerHTML=`
+    <div class="role-card-inner ${isGhost?'rci-ghost':'rci-human'}">
+      <div class="role-icon">${isGhost?'👻':'👤'}</div>
+      <div class="role-title" style="color:${isGhost?'var(--accent2)':'var(--green)'}">${isGhost?'คุณคือผี':'คุณคือมนุษย์'}</div>
+      <div class="role-desc">${isGhost?'ซ่อนตัว อย่าให้โดนโหวตไล่ออก แทรกซึมเป็นพนักงาน':'คัดกรองแขกและพนักงานที่เป็นผีให้หมด'}</div>
+    </div>`;
+  let cd=4;
+  const cdEl=document.getElementById('role-cd');
+  const iv=setInterval(()=>{
+    cdEl.textContent=`เข้าโรงแรมใน ${cd} วิ...`;
+    cd--;
+    if(cd<0){clearInterval(iv);}
+  },1000);
 });
 
-socket.on('pictionary_turn', ({ type, prompt, image, turnIndex, total }) => {
-  showScreen('pic-screen');
-  document.getElementById('pic-status').textContent = `รอบที่ ${turnIndex+1}/${total}`;
-  if (type === 'draw') {
-    document.getElementById('wait-panel').style.display = 'none';
-    document.getElementById('guess-panel').style.display = 'none';
-    document.getElementById('draw-panel').style.display = 'flex';
-    document.getElementById('draw-prompt').textContent = `วาด: ${prompt}`;
-    clearCanvas(); if (!canvas) initCanvas();
+// ---- ROUND START ----
+socket.on('round_start',({round,tasks:t,guestCount})=>{
+  show('game-screen');
+  document.getElementById('round-num').textContent=round;
+  toast(`🔔 รอบ ${round} เริ่มต้น — แขก ${guestCount} คนรอเช็คอิน`,'info');
+  addLog(`--- รอบ ${round} เริ่มต้น ---`,'info');
+  const chip=document.getElementById('my-role-chip');
+  chip.innerHTML=myRole==='ghost'
+    ?'<span class="role-badge role-ghost">👻 ผี</span>'
+    :'<span class="role-badge role-human">👤 มนุษย์</span>';
+});
+
+socket.on('round_timer',({roundTime})=>{
+  const el=document.getElementById('timer-display');
+  el.textContent=roundTime;
+  el.className='timer-big'+(roundTime<=7?' warn':'');
+});
+
+socket.on('round_end',({round,ghostsIn,starsLost,stars})=>{
+  if(ghostsIn>0){
+    toast(`⚠️ รอบ ${round} จบ — ผีอยู่ในโรงแรม ${ghostsIn} ตัว! เสีย ${starsLost} ดาว`,'bad',4000);
+    addLog(`รอบ ${round} จบ — ผีซ่อนอยู่ ${ghostsIn} ตัว เสีย ${starsLost} ดาว`,'bad');
   } else {
-    document.getElementById('wait-panel').style.display = 'none';
-    document.getElementById('draw-panel').style.display = 'none';
-    document.getElementById('guess-panel').style.display = 'flex';
-    document.getElementById('pic-image-preview').src = image;
-    document.getElementById('guess-input').value = '';
+    toast(`✅ รอบ ${round} จบ — ไม่มีผีหลุดรอด!`,'good',3000);
+    addLog(`รอบ ${round} จบ — ปลอดภัย`,'good');
+  }
+  updateStars(stars);
+});
+
+// ---- STATE UPDATE ----
+socket.on('state_update',(state)=>{
+  updateStars(state.stars);
+  document.getElementById('round-num').textContent=state.round;
+  updateGuestList(state.guestQueue);
+  updateRoomsGrid(state.hotelRooms,state.players);
+  updateTasksList(state.tasks);
+  updatePlayerListGame(state.players);
+  updateVoteEnd(state.voteEnd,state.players);
+  // clues
+  if(state.clues&&state.clues.length>0){
+    clues=state.clues;
+    renderClues();
   }
 });
 
-socket.on('pictionary_timer', ({ timeLeft }) => {
-  const el = document.getElementById('pic-timer');
-  el.textContent = timeLeft; el.style.color = timeLeft <= 2 ? '#ff4444' : '#ff6b6b';
+function updateStars(n){
+  const r=document.getElementById('stars-row');
+  if(!r)return;
+  r.innerHTML='';
+  for(let i=0;i<5;i++) r.innerHTML+=(i<n?'⭐':'☆');
+}
+
+function updateGuestList(queue){
+  const el=document.getElementById('guest-list');
+  if(!el)return;
+  document.getElementById('queue-count').textContent=queue.filter(g=>!g.checkedIn).length;
+  el.innerHTML='';
+  queue.forEach(g=>{
+    guestMap[g.id]=g;
+    const div=document.createElement('div');
+    div.className='guest-card'+(g.voteActive?' voting':'');
+    div.innerHTML=buildGuestCard(g);
+    el.appendChild(div);
+  });
+}
+
+function buildGuestCard(g){
+  const cardClass={'ปกติ':'card-ok','เจาะรู':'card-hole','ไม่มีบัตร':'card-none'}[g.cardType]||'card-ok';
+  const cardIcon={'ปกติ':'🪪','เจาะรู':'🔲','ไม่มีบัตร':'❌'}[g.cardType]||'🪪';
+  if(g.checkedIn){
+    return `<div class="gc-head"><span class="gc-name">${g.name}</span><span class="checkedin-tag">เช็คอิน ห้อง ${g.assignedRoom}</span></div>`;
+  }
+  const clueHtml=g.clues.map(c=>`<div class="clue-item">${c}</div>`).join('');
+  const voteHtml=g.voteActive?`
+    <div class="vote-row">
+      <button class="btn-sm btn-accept" onclick="voteGuest('${g.id}','accept')">✅ รับ (${g.votes.accept})</button>
+      <button class="btn-sm btn-reject" onclick="voteGuest('${g.id}','reject')">❌ ไล่ (${g.votes.reject})</button>
+      <div class="vote-bar-wrap"><div class="vote-bar-fill" style="width:${g.votes.accept+g.votes.reject>0?Math.round(g.votes.accept/(g.votes.accept+g.votes.reject)*100):50}%"></div></div>
+    </div>`:'<div style="font-size:.72rem;color:var(--muted);">รอการโหวต...</div>';
+  return `
+    <div class="gc-head">
+      <span class="gc-name">${g.name}</span>
+      <span class="gc-card ${cardClass}">${cardIcon} ${g.cardType}</span>
+    </div>
+    <div class="gc-stats">
+      <span>${g.gender}</span><span>อายุ ${g.age} ปี</span>
+      <span>สูง ${g.height} ซม.</span><span>หนัก ${g.weight} กก.</span>
+    </div>
+    <div class="gc-clues">${clueHtml}</div>
+    <div class="gc-actions">
+      <button class="btn-sm btn-scan" onclick="scanGuest('${g.id}')">🔎 สแกนทันที</button>
+    </div>
+    ${voteHtml}`;
+}
+
+function updateRoomsGrid(hotelRooms,players){
+  const el=document.getElementById('rooms-grid');
+  if(!el)return;
+  el.innerHTML='';
+  hotelRooms.forEach(r=>{
+    const isMe=players&&players.some(p=>p.id===socket.id&&p.currentRoom===r.id);
+    const hasClue=!!r.clueLeft;
+    const div=document.createElement('div');
+    div.className='room-cell'+(r.occupied?' occupied':'')+(isMe?' my-room':'');
+    div.onclick=()=>moveToRoom(r.id);
+    div.innerHTML=`
+      ${hasClue?'<div class="clue-dot"></div>':''}
+      <div class="ricon">${r.occupied?'🛏️':'🚪'}</div>
+      <div class="rnum">${r.id}</div>
+      <div class="rguest">${r.guestName||'ว่าง'}</div>`;
+    el.appendChild(div);
+  });
+}
+
+function updateTasksList(t){
+  const el=document.getElementById('tasks-list');
+  if(!el)return;
+  el.innerHTML='';
+  if(!t||t.length===0){el.innerHTML='<div style="color:var(--muted);font-size:.8rem;">ไม่มีภารกิจ</div>';return;}
+  t.forEach(task=>{
+    const joined=Object.keys(task.progress||{}).length;
+    const needed=task.needPlayers||1;
+    const pct=Math.min(100,Math.round(joined/needed*100));
+    const div=document.createElement('div');
+    div.className='task-card';
+    div.innerHTML=`
+      <div class="task-head">
+        <span class="task-name">${task.name}</span>
+        ${task.completed?'<span class="task-done">✅ สำเร็จ</span>':''}
+      </div>
+      <div class="task-desc">${task.desc}</div>
+      ${task.timeBonus>0?`<div style="font-size:.72rem;color:var(--blue)">⏱️ +${task.timeBonus} วิเมื่อสำเร็จ</div>`:''}
+      <div class="task-prog">${joined}/${needed} คน</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      ${!task.completed?`<button class="btn-sm btn-accept" onclick="joinTask('${task.id}')">เข้าร่วม</button>`:''}`;
+    el.appendChild(div);
+  });
+}
+
+function updatePlayerListGame(players){
+  const el=document.getElementById('player-list-game');
+  if(!el)return;
+  el.innerHTML='';
+  players.forEach(p=>{
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.82rem;';
+    div.innerHTML=`<div class="ava" style="background:${avatarColor(p.name)};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;">${initials(p.name)}</div>
+      <span>${p.name}</span>
+      <span style="margin-left:auto;color:var(--muted);font-size:.72rem;">${p.currentRoom==='lobby'?'ล็อบบี้':'ห้อง '+p.currentRoom}</span>
+      ${p.isAI?'<span class="ai-tag">AI</span>':''}`;
+    el.appendChild(div);
+  });
+}
+
+function updateVoteEnd(voteEnd,players){
+  if(!voteEnd||!players)return;
+  const humans=players.filter(p=>!p.isAI);
+  const votes=Object.keys(voteEnd).length;
+  const needed=Math.ceil(humans.length/2);
+  const pct=Math.min(100,Math.round(votes/needed*100));
+  const fill=document.getElementById('ve-fill');
+  const txt=document.getElementById('ve-text');
+  if(fill)fill.style.width=pct+'%';
+  if(txt)txt.textContent=votes+'/'+needed;
+}
+
+function renderClues(){
+  const el=document.getElementById('clue-log');
+  const empty=document.getElementById('clue-empty');
+  if(!el)return;
+  el.innerHTML='';
+  if(clues.length===0){if(empty)empty.style.display='';return;}
+  if(empty)empty.style.display='none';
+  clues.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='clue-entry';
+    d.innerHTML=`<span class="ce-src">[${c.source==='task'?'ภารกิจ':c.roomId?'ห้อง '+c.roomId:'ระบบ'}]</span><span>${c.text}</span>`;
+    el.appendChild(d);
+  });
+  el.scrollTop=el.scrollHeight;
+}
+
+// ---- ACTIONS ----
+function voteGuest(id,vote){
+  socket.emit('vote_guest',{guestId:id,vote});
+  toast(vote==='accept'?'✅ โหวตรับแขก':'❌ โหวตไล่แขก','info');
+}
+function scanGuest(id){
+  socket.emit('scan_guest',{guestId:id});
+}
+function joinTask(id){
+  socket.emit('join_task',{taskId:id});
+}
+function moveToRoom(id){
+  currentRoom=id;
+  socket.emit('move_room',{roomId:id});
+}
+function voteEnd(){
+  if(votedEnd){toast('คุณโหวตไปแล้ว','warn');return;}
+  votedEnd=true;
+  socket.emit('vote_end_game');
+  document.getElementById('btn-vote-end').disabled=true;
+  toast('โหวตจบเกมแล้ว','info');
+}
+
+// ---- GAME EVENTS ----
+socket.on('guest_vote_open',({guest})=>{
+  guestMap[guest.id]=guest;
+  toast(`🧾 ${guest.name} รอโหวต — บัตร: ${guest.cardType}`,'warn',5000);
+  addLog(`${guest.name} รอการโหวต (บัตร: ${guest.cardType})`,'warn');
+  socket.emit('state_update'); // re-request via state
 });
 
-socket.on('pictionary_final_guess', ({ image }) => {
-  document.getElementById('wait-panel').style.display = 'none';
-  document.getElementById('draw-panel').style.display = 'none';
-  document.getElementById('guess-panel').style.display = 'flex';
-  document.getElementById('pic-image-preview').src = image;
-  document.getElementById('guess-input').value = '';
-  document.getElementById('pic-status').textContent = '🎯 คุณคือคนสุดท้าย — เดาว่ารูปนี้คืออะไร!';
-  toast('คุณต้องเดาคำสุดท้าย! 🎯', 'warn');
+socket.on('guest_vote_cast',({guestId,vote,voterName,accept,reject})=>{
+  if(guestMap[guestId]){
+    guestMap[guestId].votes={...guestMap[guestId].votes,accept,reject};
+  }
+  addLog(`${voterName} โหวต${vote==='accept'?'รับ':'ไล่'} ${guestMap[guestId]?.name||'?'}`,'info');
 });
 
-socket.on('pictionary_waiting_guess', ({ guesser }) => { showPicWaiting(`${guesser} กำลังเดาคำสุดท้าย...`); });
-
-socket.on('role_revealed', ({ role, correct, originalWord, guess }) => {
-  myRole = role; showScreen('role-screen');
-  document.getElementById('guess-result').textContent = correct ? `✅ เดาถูก! คำตอบคือ "${originalWord}"` : `❌ เดาผิด — "${guess}" แต่คำตอบจริงคือ "${originalWord}"`;
-  const isGhost = role === 'ghost';
-  document.getElementById('role-card-container').innerHTML = `<div class="role-card ${isGhost ? 'role-ghost' : 'role-human'}"><div class="role-icon">${isGhost ? '👻' : '👤'}</div><div class="role-title" style="color:${isGhost ? '#a99df5' : '#6bcb77'}">คุณคือ${isGhost ? 'ผี' : 'มนุษย์'}</div><div class="role-desc">${isGhost ? 'ซ่อนตัวในโรงแรม อย่าให้ใครจับได้ว่าเป็นผี' : 'ช่วยคัดกรองผีออกจากโรงแรม'}</div></div>`;
-  let count = 3;
-  const cd = document.getElementById('role-countdown');
-  const iv = setInterval(() => { cd.textContent = `เข้าสู่โรงแรมใน ${count} วิ...`; count--; if (count < 0) clearInterval(iv); }, 1000);
+socket.on('guest_rejected',({guestId,guestName,correct,stars})=>{
+  toast(correct?`👻 ${guestName} โดนโหวตออก — เป็นผีจริง!`:`😱 ${guestName} เป็นคน! ไล่ออกผิด เสีย 1 ดาว`,correct?'good':'bad',4000);
+  addLog(correct?`${guestName} โดนโหวตออก — เป็นผี ✅`:`${guestName} โดนไล่ออกทั้งที่เป็นคน ❌`,correct?'good':'bad');
+  if(stars!==undefined)updateStars(stars);
+  delete guestMap[guestId];
 });
 
-socket.on('hotel_start', ({ hotelTime, players }) => {
-  showScreen('hotel-screen'); playerMap = {};
-  players.forEach(p => { playerMap[p.id] = p; }); updatePlayerCards();
-  const roleEl = document.getElementById('my-role-display');
-  roleEl.innerHTML = myRole === 'ghost' ? '<span style="color:#a99df5">👻 คุณคือผี — ซ่อนตัวให้ดี!</span>' : '<span style="color:#6bcb77">👤 คุณคือมนุษย์ — ช่วยจับผีด้วย!</span>';
-  addLog('เกมเริ่มต้นแล้ว! ดูแลโรงแรมให้ดี 🏨', 'info');
+socket.on('guest_checkin',({guestId,guestName,roomId})=>{
+  toast(`🏨 ${guestName} เช็คอินห้อง ${roomId}`,'info');
+  addLog(`${guestName} เช็คอินห้อง ${roomId}`,'info');
 });
 
-socket.on('hotel_timer', ({ hotelTime }) => {
-  const el = document.getElementById('hotel-time-display');
-  el.textContent = formatTime(hotelTime);
-  if (hotelTime <= 60) el.classList.add('warning'); else el.classList.remove('warning');
+socket.on('scan_result',({guestId,guestName,isGhost,scannerName,stars})=>{
+  if(isGhost){
+    toast(`✅ ${guestName} เป็นผี! ${scannerName} สแกนถูก`,'good');
+    addLog(`${scannerName} สแกน ${guestName} → ผี ✅`,'good');
+  } else {
+    toast(`⚠️ ${guestName} เป็นคน! เสีย 1 ดาว`,'bad');
+    addLog(`${scannerName} สแกน ${guestName} → คน ❌ เสีย 1 ดาว`,'bad');
+    if(stars!==undefined)updateStars(stars);
+  }
+  delete guestMap[guestId];
 });
 
-socket.on('guest_arrived', ({ guestId, guestName }) => {
-  guestMap[guestId] = { id: guestId, name: guestName, checkedIn: false };
-  updateGuestList(); addLog(`${guestName} มาถึงโรงแรม รอเช็คอิน`, 'info'); toast(`🧍 ${guestName} มาถึงแล้ว!`);
-  setTimeout(() => { if (guestMap[guestId] && !guestMap[guestId].checkedIn) { guestMap[guestId].checkedIn = true; socket.emit('checkin_guest', { guestId }); updateGuestList(); addLog(`${guestName} เช็คอินเข้าพักแล้ว`, ''); } }, 10000);
+socket.on('task_complete',({taskName,timeBonus})=>{
+  toast(`✅ ภารกิจ "${taskName}" สำเร็จ!${timeBonus>0?' +'+timeBonus+' วิ':''}`,'good');
+  addLog(`ภารกิจ "${taskName}" สำเร็จ${timeBonus>0?' +'+timeBonus+' วิ':''}`,'good');
 });
 
-socket.on('guest_scanned', ({ guestId, guestName, isGhost, penalty, scannerName, hotelTime }) => {
-  if (isGhost) { delete guestMap[guestId]; updateGuestList(); addLog(`${scannerName} สแกน ${guestName} → เป็นผี! ไล่ออกแล้ว 👻`, 'good'); toast(`✅ ${guestName} เป็นผี — ไล่ออกแล้ว!`, 'good'); }
-  else { addLog(`${scannerName} สแกน ${guestName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad'); toast(`⚠️ ${guestName} เป็นคน เสียเวลา ${penalty} วิ!`, 'bad'); if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime); }
+socket.on('task_joined',({taskId,joined,needed,playerName})=>{
+  toast(`${playerName} เข้าร่วมภารกิจ (${joined}/${needed})`,'info');
 });
 
-socket.on('player_scanned', ({ targetName, isGhost, penalty, scannerName, hotelTime }) => {
-  if (isGhost) { addLog(`${scannerName} สแกน ${targetName} → เป็นผี! ไล่ออก 👻`, 'good'); toast(`✅ ${targetName} เป็นผีพนักงาน — ไล่ออกแล้ว!`, 'good'); const id = Object.keys(playerMap).find(k => playerMap[k].name === targetName); if (id) { delete playerMap[id]; updatePlayerCards(); } }
-  else { addLog(`${scannerName} สแกน ${targetName} → เป็นคน เสียเวลา ${penalty} วิ ⚠️`, 'bad'); toast(`⚠️ ${targetName} เป็นมนุษย์ เสียเวลา ${penalty} วิ!`, 'bad'); if (hotelTime !== undefined) document.getElementById('hotel-time-display').textContent = formatTime(hotelTime); }
+socket.on('clue_found',({roomId,text,source})=>{
+  clues.push({roomId,text,source:source||'room',round:0});
+  renderClues();
+  toast(`🔍 เบาะแสใหม่: ${text}`,'warn',5000);
+  addLog(`[เบาะแส] ${text}`,'warn');
+  document.getElementById('clue-empty').style.display='none';
 });
 
-socket.on('you_were_caught', () => { toast('คุณถูกจับแล้ว! 👻', 'bad'); addLog('คุณถูกไล่ออกจากโรงแรม', 'bad'); });
-
-socket.on('vote_update', ({ votes, needed }) => {
-  document.getElementById('vote-text').textContent = `${votes} / ${needed}`;
-  document.getElementById('vote-fill').style.width = Math.min(100, (votes/needed)*100) + '%';
-  addLog(`โหวตจบเกม: ${votes}/${needed}`, 'info');
+socket.on('moved_to',({roomId})=>{
+  toast(`🚶 ย้ายไปห้อง ${roomId}`,'info',1800);
 });
 
-socket.on('player_left', ({ name }) => { toast(`${name} ออกจากเกม`, 'warn'); addLog(`${name} ออกจากเกม`, 'warn'); });
-
-socket.on('game_over', ({ win, reason, totalGhosts, players }) => {
-  showScreen('end-screen');
-  const card = document.getElementById('end-card');
-  card.className = 'end-card ' + (win ? 'end-win' : 'end-lose');
-  document.getElementById('end-icon').textContent = win ? '🎉' : '💀';
-  document.getElementById('end-title').textContent = win ? 'ชนะแล้ว!' : 'แพ้แล้ว!';
-  document.getElementById('end-desc').textContent = reason === 'timeout' ? '⏱️ เวลาหมด — ผียังอยู่ในโรงแรม!' : win ? '✅ ไล่ผีออกหมดแล้ว โรงแรมปลอดภัย!' : `❌ ยังมีผีเหลืออยู่ ${totalGhosts} ตัว!`;
-  document.getElementById('reveal-list').innerHTML = '<div style="font-size:0.8rem;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:2px">เปิดเผยทุกบท</div>' +
-    players.map(p => `<div class="reveal-item"><span style="font-size:1.4rem">${p.role==='ghost'?'👻':'👤'}</span><span>${p.name}${p.isAI?' 🤖':''}</span><span style="margin-left:auto;font-size:0.85rem;color:${p.role==='ghost'?'#a99df5':'#6bcb77'}">${p.role==='ghost'?'ผี':'มนุษย์'}</span></div>`).join('');
+socket.on('vote_end_update',({votes,needed})=>{
+  updateVoteEnd({length:votes},{length:needed});
+  const fill=document.getElementById('ve-fill');
+  const txt=document.getElementById('ve-text');
+  if(fill)fill.style.width=Math.min(100,Math.round(votes/needed*100))+'%';
+  if(txt)txt.textContent=votes+'/'+needed;
+  addLog(`โหวตจบเกม: ${votes}/${needed}`,'info');
 });
 
-socket.on('error_msg', (msg) => { toast('❌ ' + msg, 'bad'); });
+socket.on('hotel_full',({guestName})=>{
+  toast(`⚠️ โรงแรมเต็ม ไม่รับ ${guestName}`,'warn');
+  addLog(`โรงแรมเต็ม — ${guestName} ไม่ได้เข้าพัก`,'warn');
+});
+
+socket.on('log',({text,type})=>{
+  addLog(text,type||'');
+});
+
+socket.on('player_left',({name})=>{
+  toast(`${name} ออกจากเกม`,'warn');
+  addLog(`${name} ออกจากเกม`,'warn');
+});
+
+// ---- GAME OVER ----
+socket.on('game_over',({win,reasonText,stars,revealRooms,players,allGuests})=>{
+  show('end-screen');
+  const box=document.getElementById('end-box');
+  box.className='end-box '+(win?'end-win':'end-lose');
+  document.getElementById('end-icon').textContent=win?'🎉':'💀';
+  document.getElementById('end-title').textContent=win?'ชนะแล้ว!':'แพ้แล้ว!';
+  document.getElementById('end-desc').textContent=reasonText;
+  document.getElementById('final-stars').innerHTML='ดาวสุดท้าย: '+'⭐'.repeat(stars)+'☆'.repeat(5-stars);
+
+  // reveal rooms
+  const rr=document.getElementById('reveal-rooms');
+  rr.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">ห้องพัก</div>';
+  revealRooms.forEach(r=>{
+    const d=document.createElement('div');
+    d.className='rev-room';
+    d.innerHTML=`<span>${r.hasGhost?'👻':'🛏️'}</span>
+      <span>ห้อง ${r.id}</span>
+      <span style="color:var(--muted)">${r.guestName||'ว่าง'}</span>
+      <span class="ml-auto ${r.hasGhost?'rev-ghost':'rev-human'}" style="margin-left:auto">${r.hasGhost?'ผีพัก':'ปกติ'}</span>`;
+    rr.appendChild(d);
+  });
+
+  // reveal players
+  const rp=document.getElementById('reveal-players');
+  rp.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">พนักงาน</div>';
+  players.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='rev-item';
+    d.innerHTML=`<span>${p.role==='ghost'?'👻':'👤'}</span>
+      <span>${p.name}</span>
+      ${p.isAI?'<span class="ai-tag">AI</span>':''}
+      <span class="${p.role==='ghost'?'rev-ghost':'rev-human'}" style="margin-left:auto">${p.role==='ghost'?'ผี':'มนุษย์'}</span>`;
+    rp.appendChild(d);
+  });
+
+  // reveal guests
+  const rg=document.getElementById('reveal-guests');
+  rg.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">แขก</div>';
+  allGuests.forEach(g=>{
+    const d=document.createElement('div');
+    d.className='rev-item';
+    d.innerHTML=`<span>${g.isGhost?'👻':'👤'}</span>
+      <span>${g.name}</span>
+      <span style="color:var(--muted);font-size:.75rem">${g.cardType}</span>
+      <span class="${g.isGhost?'rev-ghost':'rev-human'}" style="margin-left:auto">${g.isGhost?'ผี':'คน'}</span>`;
+    rg.appendChild(d);
+  });
+});
+
+socket.on('error_msg',(msg)=>{ toast('❌ '+msg,'bad'); });
 </script>
 </body>
 </html>
-ENDOFFILE
-echo "done"
