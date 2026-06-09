@@ -295,7 +295,7 @@ io.on('connection', (socket) => {
       });
     });
 
-    setTimeout(() => startHotelPhase(room), 3000);
+    setTimeout(() => startHotelPhase(room), 8080);
   });
 
   // Staff สแกนแขก
